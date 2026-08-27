@@ -1,0 +1,150 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg-base: #FAFAF8;
+    --bg-surface: #FFFFFF;
+    --bg-surface-hover: #F3F4F6;
+    --border-subtle: #E5E5E5;
+    --text-primary: #1A1A1A;
+    --text-secondary: #6B7280;
+    --accent-color: #4F46E5;
+    
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+    --shadow-lg: 0 12px 32px rgba(0,0,0,0.12);
+    
+    --radius-card: 12px;
+    --radius-input: 8px;
+    --radius-pill: 999px;
+
+    --density-multiplier: 1;
+    --density-p: calc(1.5rem * var(--density-multiplier));
+    --density-gap: calc(1rem * var(--density-multiplier));
+  }
+  
+  .dark {
+    --bg-base: #0A0A0A;
+    --bg-surface: #111111;
+    --bg-surface-hover: #1A1A1A;
+    --border-subtle: #2A2A2A;
+    --text-primary: #F5F5F5;
+    --text-secondary: #A1A1AA;
+    
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+    --shadow-md: 0 8px 24px rgba(0,0,0,0.4);
+    --shadow-lg: 0 16px 48px rgba(0,0,0,0.5);
+  }
+
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background-color: var(--bg-base);
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+    letter-spacing: normal;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    letter-spacing: -0.01em;
+  }
+}
+
+@layer utilities {
+  .glass-panel {
+    background-color: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+  }
+  .dark .glass-panel {
+    background-color: rgba(17, 17, 17, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+  }
+  
+  .luxury-card {
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-sm);
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .luxury-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+  }
+
+  .luxury-input {
+    background-color: transparent;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-input);
+    transition: all 0.2s ease;
+  }
+  .luxury-input:focus {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
+    outline: none;
+  }
+
+  .luxury-button-primary {
+    background: linear-gradient(135deg, var(--accent-color), #4338CA);
+    color: white;
+    border-radius: var(--radius-pill);
+    box-shadow: var(--shadow-sm);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .luxury-button-primary:hover {
+    box-shadow: var(--shadow-md);
+    transform: scale(0.98);
+  }
+  .luxury-button-primary:active {
+    transform: scale(0.95);
+  }
+  
+  .luxury-button-ghost {
+    border-radius: var(--radius-input);
+    transition: all 0.2s ease;
+  }
+  .luxury-button-ghost:hover {
+    background-color: var(--bg-surface-hover);
+  }
+
+  /* Custom Scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--border-subtle);
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--text-secondary);
+  }
+}
+
+/* Markdown prose overrides */
+.prose {
+  color: var(--text-primary);
+  line-height: 1.7;
+}
+.prose h1, .prose h2, .prose h3 {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.prose code {
+  color: var(--text-primary);
+  background-color: var(--bg-surface-hover);
+  padding: 0.2em 0.4em;
+  border-radius: 4px;
+  font-size: 0.875em;
+}
+.prose pre code {
+  background-color: transparent;
+  padding: 0;
+}
