@@ -73,64 +73,47 @@ interface MessageListProps {
 export default function MessageList({ conversation, isComparison, onResend }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
   
-  // Trace active branch
+  // Trace active branch with rock-solid fallback
   const activeMessages = useMemo(() => {
-    const history: Message[] = [];
-    let currentId: string | null | undefined = conversation.currentLeafId;
+    if (!conversation.messages || conversation.messages.length === 0) return [];
+
+    if (isComparison) {
+      // In comparison mode, all messages sorted by timestamp
+      return [...conversation.messages].sort((a, b) => a.timestamp - b.timestamp);
+    }
+
     const msgMap = new Map(conversation.messages.map(m => [m.id, m]));
-    
-    // In comparison mode, there are 2 assistant messages per user message
-    // We group them by parentId
-    
-    while (currentId) {
+    let currentId: string | null | undefined = conversation.currentLeafId;
+
+    // If leaf ID is missing or invalid, point to the latest message
+    if (!currentId || !msgMap.has(currentId)) {
+      currentId = conversation.messages[conversation.messages.length - 1]?.id;
+    }
+
+    const history: Message[] = [];
+    const visited = new Set<string>();
+
+    while (currentId && !visited.has(currentId)) {
+      visited.add(currentId);
       const msg = msgMap.get(currentId);
       if (!msg) break;
       history.unshift(msg);
-      
-      if (isComparison && msg.role === 'assistant') {
-        // find sibling
-        const sibling = conversation.messages.find(m => m.parentId === msg.parentId && m.id !== msg.id && m.role === 'assistant');
-        if (sibling && !history.find(h => h.id === sibling.id)) {
-           // We'll handle pairing during rendering, so just keep tracing up
-        }
-      }
       currentId = msg.parentId;
     }
 
-    if (isComparison) {
-        // Group by user message
-        const grouped: Array<{user: Message, assistants: Message[]}> = [];
-        const currGroup: {user: Message, assistants: Message[]} | null = null;
-        
-        // Re-trace from roots
-        const allMsgs = Array.from(msgMap.values());
-        
-        // Let's build a simpler structure: array of objects representing turns
-        // A turn has 1 user message, and 1 or more assistant messages pointing to it
-        
-        // Find path from leaf to root
-        let leaf = conversation.currentLeafId;
-        const pathIds = new Set<string>();
-        while(leaf) {
-            pathIds.add(leaf);
-            const m = msgMap.get(leaf);
-            leaf = m?.parentId;
-        }
-
-        const validMsgs = allMsgs.filter(m => pathIds.has(m.id) || (m.role === 'assistant' && pathIds.has(m.parentId!)));
-        
-        // Sort by timestamp
-        validMsgs.sort((a,b) => a.timestamp - b.timestamp);
-        
-        return validMsgs;
+    // Safety fallback: if history ended up empty but conversation has messages, use all messages
+    if (history.length === 0 && conversation.messages.length > 0) {
+      return [...conversation.messages].sort((a, b) => a.timestamp - b.timestamp);
     }
 
     return history;
   }, [conversation.messages, conversation.currentLeafId, isComparison]);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [activeMessages]);
+    if (bottomRef.current) {
+      bottomRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [activeMessages.length, conversation.messages.length]);
 
     const renderContent = (content: string) => {
       return (

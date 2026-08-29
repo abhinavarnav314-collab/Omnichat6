@@ -86,7 +86,7 @@ export const useAppStore = create<AppState>((set, get) => {
     passphraseUnlocked: false,
     passphrase: null,
     isSidebarOpen: true,
-    isPromptVaultOpen: true,
+    isPromptVaultOpen: false,
     updateSettings: (newSettings) =>
       set((state) => {
         const updated = { ...state.settings, ...newSettings };

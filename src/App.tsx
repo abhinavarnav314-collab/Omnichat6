@@ -231,17 +231,8 @@ function App() {
       {!isSidebarOpen && (
         <button
           onClick={toggleSidebar}
-          className="absolute top-4 left-4 z-20 p-1.5 bg-[var(--bg-surface)] border border-[var(--border-subtle)] luxury-card rounded-md shadow-sm hover:bg-[var(--bg-surface-hover)]"
-          title="Open Sidebar (Ctrl+\)"
-        >
-          <Menu size={16} />
-        </button>
-      )}
-      {!isPromptVaultOpen && (
-        <button
-          onClick={togglePromptVault}
-          className="absolute top-4 right-4 z-20 p-1.5 bg-[var(--bg-surface)] border border-[var(--border-subtle)] luxury-card rounded-md shadow-sm hover:bg-[var(--bg-surface-hover)]"
-          title="Open Prompt Vault (Ctrl+/)"
+          className="absolute top-3 left-3 z-30 p-2 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-lg shadow-md hover:bg-[var(--bg-surface-hover)] text-[var(--text-secondary)]"
+          title="Open Sidebar"
         >
           <Menu size={16} />
         </button>

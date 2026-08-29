@@ -5,12 +5,25 @@ export class GeminiAdapter implements ProviderAdapter {
   id = 'gemini';
   name = 'Google Gemini';
   models: ProviderModel[] = [
-    { id: 'gemini-3.1-pro-preview', name: 'gemini-3.1-pro-preview (Thinking)' },
-    { id: 'gemini-3.5-flash', name: 'gemini-3.5-flash' },
-    { id: 'gemini-3.1-flash-lite', name: 'gemini-3.1-flash-lite' },
-    { id: 'gemini-1.5-pro-latest', name: 'gemini-1.5-pro-latest' },
-    { id: 'gemini-1.5-flash-latest', name: 'gemini-1.5-flash-latest' }
+    { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash (Recommended)' },
+    { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro' },
+    { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash' },
+    { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro' },
+    { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash' },
+    { id: 'gemini-1.5-flash-8b', name: 'Gemini 1.5 Flash-8B' },
+    { id: 'gemini-3.1-pro-preview', name: 'Gemini 3.1 Pro Preview (Thinking)' },
+    { id: 'gemini-3.5-flash', name: 'Gemini 3.5 Flash' },
+    { id: 'gemini-3.1-flash-lite', name: 'Gemini 3.1 Flash Lite' },
+    { id: 'gemini-1.5-pro-latest', name: 'Gemini 1.5 Pro (Latest)' },
+    { id: 'gemini-1.5-flash-latest', name: 'Gemini 1.5 Flash (Latest)' },
   ];
+
+  // Resolve aliases if needed
+  private resolveModelId(modelId: string): string {
+    if (modelId === 'gemini-1.5-pro-latest') return 'gemini-1.5-pro';
+    if (modelId === 'gemini-1.5-flash-latest') return 'gemini-1.5-flash';
+    return modelId;
+  }
 
   async sendMessage(
     messages: Message[],
@@ -23,36 +36,62 @@ export class GeminiAdapter implements ProviderAdapter {
     parameters?: any,
     onUsage?: (usage: { prompt: number; completion: number }) => void
   ): Promise<void> {
-    const contents = messages.map(m => ({
-      role: m.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: m.content }]
-    }));
+    const resolvedModel = this.resolveModelId(model);
 
-    const payload: any = { contents };
+    // Sanitize and ensure consecutive alternating roles for Gemini API
+    const sanitizedContents: Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }> = [];
+    for (const m of messages) {
+      const text = m.content?.trim();
+      if (!text && m.role === 'user') continue;
+      const role = m.role === 'assistant' ? 'model' : 'user';
+      if (sanitizedContents.length > 0 && sanitizedContents[sanitizedContents.length - 1].role === role) {
+        sanitizedContents[sanitizedContents.length - 1].parts[0].text += `\n\n${text || ''}`;
+      } else {
+        sanitizedContents.push({
+          role,
+          parts: [{ text: text || ' ' }]
+        });
+      }
+    }
+
+    // Gemini requires starting with a user turn
+    if (sanitizedContents.length === 0) {
+      sanitizedContents.push({ role: 'user', parts: [{ text: 'Hello' }] });
+    } else if (sanitizedContents[0].role === 'model') {
+      sanitizedContents.unshift({ role: 'user', parts: [{ text: 'Hello' }] });
+    }
+
+    const payload: any = { contents: sanitizedContents };
     
-    if (systemPrompt) {
+    if (systemPrompt && systemPrompt.trim()) {
       payload.systemInstruction = {
-        parts: [{ text: systemPrompt }]
+        parts: [{ text: systemPrompt.trim() }]
       };
     }
     
-    payload.generationConfig = {};
+    const genConfig: any = {};
     if (parameters) {
-      if (parameters.temperature !== undefined && model !== 'gemini-3.1-pro-preview') {
-          payload.generationConfig.temperature = parameters.temperature;
+      if (parameters.temperature !== undefined && !resolvedModel.includes('preview')) {
+        genConfig.temperature = parameters.temperature;
       }
-      if (parameters.top_p !== undefined) payload.generationConfig.topP = parameters.top_p;
-      // Do not set maxOutputTokens for 3.1-pro-preview as per requirement
-      if (parameters.max_tokens !== undefined && model !== 'gemini-3.1-pro-preview') {
-          payload.generationConfig.maxOutputTokens = parameters.max_tokens;
+      if (parameters.top_p !== undefined) {
+        genConfig.topP = parameters.top_p;
+      }
+      if (parameters.max_tokens !== undefined && !resolvedModel.includes('preview')) {
+        genConfig.maxOutputTokens = parameters.max_tokens;
       }
     }
     
-    if (model === 'gemini-3.1-pro-preview') {
-        payload.generationConfig.thinkingConfig = { thinkingLevel: 'HIGH' };
+    if (resolvedModel === 'gemini-3.1-pro-preview') {
+      genConfig.thinkingConfig = { thinkingLevel: 'HIGH' };
     }
 
-    let fetchUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse`;
+    if (Object.keys(genConfig).length > 0) {
+      payload.generationConfig = genConfig;
+    }
+
+    const cleanKey = apiKey.trim();
+    let fetchUrl = `https://generativelanguage.googleapis.com/v1beta/models/${resolvedModel}:streamGenerateContent?key=${encodeURIComponent(cleanKey)}&alt=sse`;
     if (proxyUrl) {
       const targetUrl = encodeURIComponent(fetchUrl);
       const separator = proxyUrl.includes('?') ? '&' : '?';
@@ -61,25 +100,25 @@ export class GeminiAdapter implements ProviderAdapter {
 
     let response;
     try {
-        response = await fetch(fetchUrl, {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'x-goog-api-key': apiKey
-          },
-          body: JSON.stringify(payload),
-          signal
-        });
+      response = await fetch(fetchUrl, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-goog-api-key': cleanKey
+        },
+        body: JSON.stringify(payload),
+        signal
+      });
     } catch (err: any) {
-        throw handleProviderError(err, this.name);
+      throw handleProviderError(err, this.name);
     }
 
     if (!response.ok) {
       const errText = await response.text();
-      throw handleProviderError(new Error(`Gemini API Error: ${response.status} ${errText}`), this.name, response.status);
+      throw handleProviderError(new Error(`Gemini API Error (${response.status}): ${errText}`), this.name, response.status);
     }
 
-    if (!response.body) throw new Error("No response body");
+    if (!response.body) throw new Error("No response body received from Gemini API");
     const reader = response.body.getReader();
     const decoder = new TextDecoder('utf-8');
     let buffer = '';
@@ -103,27 +142,32 @@ export class GeminiAdapter implements ProviderAdapter {
             const parsed = JSON.parse(data);
             
             if (parsed.usageMetadata) {
-                promptTokens = parsed.usageMetadata.promptTokenCount || 0;
-                completionTokens = parsed.usageMetadata.candidatesTokenCount || 0;
+              promptTokens = parsed.usageMetadata.promptTokenCount || 0;
+              completionTokens = parsed.usageMetadata.candidatesTokenCount || 0;
             }
             
             const chunkText = this.parseResponseStream(parsed);
             if (chunkText) onUpdate(chunkText);
           } catch (e) {
-            console.warn("Parse error for chunk", trimmed);
+            console.warn("Parse error for Gemini chunk", trimmed);
           }
         }
       }
     }
     
     if (onUsage && (promptTokens > 0 || completionTokens > 0)) {
-        onUsage({ prompt: promptTokens, completion: completionTokens });
+      onUsage({ prompt: promptTokens, completion: completionTokens });
     }
   }
 
   parseResponseStream(chunk: any): string {
-    return chunk?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const parts = chunk?.candidates?.[0]?.content?.parts;
+    if (Array.isArray(parts)) {
+      return parts.map((p: any) => p.text || '').join('');
+    }
+    return '';
   }
 }
 
 export const geminiAdapter = new GeminiAdapter();
+

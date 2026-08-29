@@ -19,6 +19,7 @@ interface ChatState {
   updateConversationParameters: (convoId: string, params: any) => Promise<void>;
   setComparisonModels: (convoId: string, models: Array<{providerId: string; modelId: string}>) => Promise<void>;
   setCurrentLeafId: (convoId: string, leafId: string) => Promise<void>;
+  toggleComparisonMode: (convoId: string) => Promise<void>;
 }
 
 export const useChatStore = create<ChatState>((set, get) => ({
@@ -80,12 +81,27 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const msgIdx = convo.messages.findIndex(m => m.id === messageId);
     if (msgIdx === -1) return;
 
+    convo.messages = [...convo.messages];
     convo.messages[msgIdx] = { ...convo.messages[msgIdx], ...updates };
     convo.updatedAt = Date.now();
 
     if (!skipSave) {
-        await saveConversation(convo);
+      await saveConversation(convo);
     }
+
+    const newConvos = [...conversations];
+    newConvos[idx] = convo;
+    set({ conversations: newConvos });
+  },
+  toggleComparisonMode: async (convoId) => {
+    const { conversations } = get();
+    const idx = conversations.findIndex(c => c.id === convoId);
+    if (idx === -1) return;
+
+    const convo = { ...conversations[idx] };
+    convo.isComparison = !convo.isComparison;
+    convo.updatedAt = Date.now();
+    await saveConversation(convo);
 
     const newConvos = [...conversations];
     newConvos[idx] = convo;
