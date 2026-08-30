@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import AppLayout, { ExportButtons } from './AppLayout';
 import { useAppRunner } from './useAppRunner';
 import { LineChart } from 'lucide-react';
-import Markdown from 'react-markdown';
+import SafeMarkdown from '../SafeMarkdown';
 
 export default function InvestmentResearch({ onBack }: { onBack: () => void }) {
   const [ticker, setTicker] = useState('');
@@ -18,7 +18,7 @@ export default function InvestmentResearch({ onBack }: { onBack: () => void }) {
   };
 
   return (
-    <AppLayout title="Investment Analyst" description="Generate structured investment research reports." icon={<LineChart size={24}/>} onBack={onBack}>
+    <AppLayout appId="investment" title="Investment Analyst" description="Generate structured investment research reports." icon={<LineChart size={24}/>} onBack={onBack}>
       <div className="max-w-4xl mx-auto flex flex-col gap-6 h-full">
         <div className="luxury-glass-panel p-6 rounded-xl border border-[var(--glass-border)] flex gap-4 items-end">
           <div className="flex-1">
@@ -40,7 +40,7 @@ export default function InvestmentResearch({ onBack }: { onBack: () => void }) {
             {result && <ExportButtons text={result} filename={`${ticker}-research.md`} />}
           </div>
           <div className="flex-1 overflow-y-auto markdown-body bg-transparent pr-4">
-            {result ? <Markdown>{result}</Markdown> : <div className="text-[var(--text-secondary)] h-full flex items-center justify-center">Enter a ticker and generate the report.</div>}
+            {result ? <SafeMarkdown>{result}</SafeMarkdown> : <div className="text-[var(--text-secondary)] h-full flex items-center justify-center">Enter a ticker and generate the report.</div>}
           </div>
         </div>
       </div>

@@ -42,7 +42,7 @@ const Row = ({ index, style, data }: any) => {
                 </>
               )}
             </div>
-            <div aria-live={!isUser && msg.id === 'streaming' ? 'polite' : 'off'} className="prose prose-sm dark:prose-invert prose-p:leading-relaxed prose-pre:p-0 max-w-none">
+            <div aria-live={!isUser ? 'polite' : 'off'} className="prose prose-sm dark:prose-invert prose-p:leading-relaxed prose-pre:p-0 max-w-none">
               {isUser ? msg.content : renderContent(msg.content)}
             </div>
             {!isUser && renderMessageStats(msg)}

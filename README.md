@@ -56,3 +56,6 @@ Once deployed, enter your Worker URL in OmniChat Settings > API Keys.
 ## Documentation
 - [Security](SECURITY.md)
 - [Contributing](CONTRIBUTING.md)
+
+## Security Note on CSP
+OmniChat enforces strict Content-Security-Policy rules. Note that `frame-ancestors` cannot be enforced via HTML `<meta>` tags. If you wish to restrict embedding OmniChat in an iframe, configure the `Content-Security-Policy: frame-ancestors 'none';` header on your hosting provider (e.g. Vercel, Cloudflare Pages, Netlify).

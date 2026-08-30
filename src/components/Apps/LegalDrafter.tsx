@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import AppLayout, { ExportButtons } from './AppLayout';
 import { useAppRunner } from './useAppRunner';
 import { Scale } from 'lucide-react';
-import Markdown from 'react-markdown';
+import SafeMarkdown from '../SafeMarkdown';
 
 export default function LegalDrafter({ onBack }: { onBack: () => void }) {
   const [docType, setDocType] = useState('NDA');
@@ -19,7 +19,7 @@ export default function LegalDrafter({ onBack }: { onBack: () => void }) {
   };
 
   return (
-    <AppLayout title="Legal Document Drafter" description="Draft customizable legal templates." icon={<Scale size={24}/>} onBack={onBack}>
+    <AppLayout appId="legal" title="Legal Document Drafter" description="Draft customizable legal templates." icon={<Scale size={24}/>} onBack={onBack}>
       <div className="flex flex-col lg:flex-row gap-6 h-full">
         <div className="w-full lg:w-1/3 flex flex-col space-y-4">
           <div className="luxury-glass-panel p-4 rounded-xl border border-[var(--glass-border)] space-y-4">

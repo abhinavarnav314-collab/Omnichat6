@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import AppLayout, { ExportButtons } from './AppLayout';
 import { useAppRunner } from './useAppRunner';
 import { GraduationCap } from 'lucide-react';
-import Markdown from 'react-markdown';
+import SafeMarkdown from '../SafeMarkdown';
 
 export default function AcademicResearch({ onBack }: { onBack: () => void }) {
   const [topic, setTopic] = useState('');
@@ -18,7 +18,7 @@ export default function AcademicResearch({ onBack }: { onBack: () => void }) {
   };
 
   return (
-    <AppLayout title="Academic Research Assistant" description="Summarize papers and generate literature review outlines." icon={<GraduationCap size={24}/>} onBack={onBack}>
+    <AppLayout appId="academic" title="Academic Research Assistant" description="Summarize papers and generate literature review outlines." icon={<GraduationCap size={24}/>} onBack={onBack}>
       <div className="flex flex-col lg:flex-row gap-6 h-full">
         <div className="w-full lg:w-1/3 flex flex-col space-y-4">
           <div className="luxury-glass-panel p-4 rounded-xl border border-[var(--glass-border)] space-y-4">
@@ -37,7 +37,7 @@ export default function AcademicResearch({ onBack }: { onBack: () => void }) {
             {result && <ExportButtons text={result} filename="research-notes.md" />}
           </div>
           <div className="flex-1 overflow-y-auto markdown-body bg-transparent pr-2">
-            {result ? <Markdown>{result}</Markdown> : <div className="text-[var(--text-secondary)] h-full flex items-center justify-center">Notes and outlines will appear here.</div>}
+            {result ? <SafeMarkdown>{result}</SafeMarkdown> : <div className="text-[var(--text-secondary)] h-full flex items-center justify-center">Notes and outlines will appear here.</div>}
           </div>
         </div>
       </div>

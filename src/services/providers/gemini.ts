@@ -91,7 +91,7 @@ export class GeminiAdapter implements ProviderAdapter {
     }
 
     const cleanKey = apiKey.trim();
-    let fetchUrl = `https://generativelanguage.googleapis.com/v1beta/models/${resolvedModel}:streamGenerateContent?key=${encodeURIComponent(cleanKey)}&alt=sse`;
+    let fetchUrl = `https://generativelanguage.googleapis.com/v1beta/models/${resolvedModel}:streamGenerateContent?alt=sse`;
     if (proxyUrl) {
       const targetUrl = encodeURIComponent(fetchUrl);
       const separator = proxyUrl.includes('?') ? '&' : '?';

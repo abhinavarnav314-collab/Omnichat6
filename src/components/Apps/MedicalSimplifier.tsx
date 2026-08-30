@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import AppLayout, { ExportButtons } from './AppLayout';
 import { useAppRunner } from './useAppRunner';
 import { Stethoscope } from 'lucide-react';
-import Markdown from 'react-markdown';
+import SafeMarkdown from '../SafeMarkdown';
 
 export default function MedicalSimplifier({ onBack }: { onBack: () => void }) {
   const [reportText, setReportText] = useState('');
@@ -18,7 +18,7 @@ export default function MedicalSimplifier({ onBack }: { onBack: () => void }) {
   };
 
   return (
-    <AppLayout title="Medical Report Simplifier" description="Translate lab reports into plain English." icon={<Stethoscope size={24}/>} onBack={onBack}>
+    <AppLayout appId="medical" title="Medical Report Simplifier" description="Translate lab reports into plain English." icon={<Stethoscope size={24}/>} onBack={onBack}>
       <div className="max-w-4xl mx-auto flex flex-col gap-6 h-full">
         <div className="luxury-glass-panel p-6 rounded-xl border border-[var(--glass-border)]">
           <label className="font-semibold mb-2 block">Paste Lab Results / Report Text</label>
@@ -38,7 +38,7 @@ export default function MedicalSimplifier({ onBack }: { onBack: () => void }) {
             {result && <ExportButtons text={result} filename="medical-summary.md" />}
           </div>
           <div className="flex-1 overflow-y-auto markdown-body bg-transparent pr-4">
-            {result ? <Markdown>{result}</Markdown> : <div className="text-[var(--text-secondary)] h-full flex items-center justify-center">Enter your results to see the simplified explanation.</div>}
+            {result ? <SafeMarkdown>{result}</SafeMarkdown> : <div className="text-[var(--text-secondary)] h-full flex items-center justify-center">Enter your results to see the simplified explanation.</div>}
           </div>
         </div>
       </div>

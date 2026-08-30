@@ -16,16 +16,16 @@ import AcademicResearch from './AcademicResearch';
 import MeetingNotes from './MeetingNotes';
 
 const APPS = [
-  { id: 'contract', name: 'Contract Review Assistant', icon: <FileText size={24} />, desc: 'Analyze contracts for risks, missing clauses, and redline suggestions.', component: ContractReview },
-  { id: 'seo', name: 'SEO Content Optimizer', icon: <Search size={24} />, desc: 'Generate outlines and full SEO-optimized articles with metadata.', component: SEOOptimizer },
-  { id: 'code', name: 'Code Review & Debugging', icon: <Code2 size={24} />, desc: 'Analyze code for bugs, security vulnerabilities, and performance.', component: CodeReview },
-  { id: 'investment', name: 'Investment Analyst', icon: <LineChart size={24} />, desc: 'Generate structured investment research reports and SWOT analysis.', component: InvestmentResearch },
-  { id: 'resume', name: 'Resume & LinkedIn Builder', icon: <Briefcase size={24} />, desc: 'Create ATS-optimized resumes and professional LinkedIn profiles.', component: ResumeBuilder },
-  { id: 'legal', name: 'Legal Document Drafter', icon: <Scale size={24} />, desc: 'Draft customizable legal templates like NDAs and demand letters.', component: LegalDrafter },
-  { id: 'medical', name: 'Medical Report Simplifier', icon: <Stethoscope size={24} />, desc: 'Translate lab reports into plain English with normal ranges.', component: MedicalSimplifier },
-  { id: 'marketing', name: 'Marketing Copy Generator', icon: <Megaphone size={24} />, desc: 'Generate high-converting multi-channel marketing campaigns.', component: MarketingCopy },
-  { id: 'academic', name: 'Academic Research Assistant', icon: <GraduationCap size={24} />, desc: 'Summarize papers and generate literature review outlines.', component: AcademicResearch },
-  { id: 'meeting', name: 'Meeting Notes to Action Items', icon: <Users size={24} />, desc: 'Extract decisions, action items, and summaries from transcripts.', component: MeetingNotes },
+  { id: 'contract', name: 'Legal Advisor Suite', icon: <FileText size={24} />, desc: 'Multi-document comparison, redlining, and a 50+ clause library for deep contract analysis.', component: ContractReview },
+  { id: 'seo', name: 'Content Marketing Studio', icon: <Search size={24} />, desc: 'Competitor content analysis, content scoring, clustering, and multi-language support.', component: SEOOptimizer },
+  { id: 'code', name: 'Developer Productivity Suite', icon: <Code2 size={24} />, desc: 'Full repository zip analysis, dependency scanning, refactoring, and interactive pair programming.', component: CodeReview },
+  { id: 'investment', name: 'Financial Research Terminal', icon: <LineChart size={24} />, desc: 'Portfolio analysis, earnings call summaries, valuation models, and macroeconomic trends.', component: InvestmentResearch },
+  { id: 'resume', name: 'Career Advancement Platform', icon: <Briefcase size={24} />, desc: 'Resume analysis against job descriptions, cover letters, mock interviews, and salary negotiation.', component: ResumeBuilder },
+  { id: 'legal', name: 'Legal Document Engine', icon: <Scale size={24} />, desc: 'Guided interviews, compliance checklists, party management, and 20+ jurisdiction-aware templates.', component: LegalDrafter },
+  { id: 'medical', name: 'Health Insights Dashboard', icon: <Stethoscope size={24} />, desc: 'Multi-report trend analysis, medication interactions, symptom tracking, and personalized health recommendations.', component: MedicalSimplifier },
+  { id: 'marketing', name: 'Marketing Automation Suite', icon: <Megaphone size={24} />, desc: 'Multi-channel builder, brand voice training, A/B testing, and email sequence planning.', component: MarketingCopy },
+  { id: 'academic', name: 'Research Management Platform', icon: <GraduationCap size={24} />, desc: 'Literature review generation, citation management, hypothesis formulation, and methodology design.', component: AcademicResearch },
+  { id: 'meeting', name: 'Meeting Intelligence Platform', icon: <Users size={24} />, desc: 'Transcript upload, action item auto-assignment, recurring agendas, and speaking time analytics.', component: MeetingNotes },
 ];
 
 export default function AppsPage() {
