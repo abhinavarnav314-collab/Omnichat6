@@ -41,13 +41,18 @@ interface OmniChatDB extends DBSchema {
     key: string;
     value: EncryptedKey;
   };
+  appSessions: {
+    key: string;
+    value: any;
+    indexes: { appId: string, timestamp: number };
+  };
 }
 
 let dbPromise: Promise<IDBPDatabase<OmniChatDB>> | null = null;
 
 export async function getDB() {
   if (!dbPromise) {
-    dbPromise = openDB<OmniChatDB>('omniChat-db', 3, {
+    dbPromise = openDB<OmniChatDB>('omniChat-db', 4, {
       upgrade(db, oldVersion, newVersion, transaction) {
         if (oldVersion < 1) {
           const cStore = db.createObjectStore('conversations', {
@@ -79,6 +84,13 @@ export async function getDB() {
         if (oldVersion < 3) {
           if (!db.objectStoreNames.contains('promptChains')) {
             db.createObjectStore('promptChains', { keyPath: 'id' });
+          }
+        }
+        if (oldVersion < 4) {
+          if (!db.objectStoreNames.contains('appSessions')) {
+            const sStore = db.createObjectStore('appSessions', { keyPath: 'id' });
+            sStore.createIndex('appId', 'appId');
+            sStore.createIndex('timestamp', 'timestamp');
           }
         }
       },
@@ -188,6 +200,25 @@ export async function deleteSecret(key: string) {
   const db = await getDB();
   await db.delete('secrets', key);
 }
+
+// App Session Ops
+export async function getAppSessions(appId?: string): Promise<any[]> {
+  const db = await getDB();
+  if (appId) {
+    const sessions = await db.getAllFromIndex('appSessions', 'appId', appId);
+    return sessions.sort((a, b) => b.timestamp - a.timestamp);
+  }
+  return db.getAll('appSessions');
+}
+export async function saveAppSession(session: any) {
+  const db = await getDB();
+  await db.put('appSessions', session);
+}
+export async function deleteAppSession(id: string) {
+  const db = await getDB();
+  await db.delete('appSessions', id);
+}
+
 export async function clearAllData() {
   const db = await getDB();
   const stores = db.objectStoreNames;

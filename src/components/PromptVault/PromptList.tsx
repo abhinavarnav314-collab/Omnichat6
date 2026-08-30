@@ -152,7 +152,7 @@ export default function PromptList() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-[var(--bg-base)] border-l border-[var(--border-subtle)] w-80 shrink-0">
+    <div className="flex flex-col h-full w-80 shrink-0 luxury-glass-panel shadow-2xl transition-all duration-500 ease-in-out z-20">
       <div className="p-4 border-b border-[var(--border-subtle)]">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-bold text-lg">Prompt Vault</h2>
@@ -178,7 +178,7 @@ export default function PromptList() {
           <input 
             type="text" 
             placeholder="Search..." 
-            className="w-full pl-9 pr-3 py-2 rounded-lg bg-[var(--bg-surface)] luxury-card border border-[var(--border-subtle)] outline-none text-sm"
+            className="w-full pl-9 pr-3 py-2 rounded-lg luxury-input border border-[var(--border-subtle)] outline-none text-sm"
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
@@ -224,7 +224,7 @@ export default function PromptList() {
         ) : (
           <>
              {chains.filter(c => c.name.toLowerCase().includes(search.toLowerCase())).map(c => (
-                 <div key={c.id} className="bg-[var(--bg-surface)] luxury-card border border-[var(--border-subtle)] rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow">
+                 <div key={c.id} className="luxury-input border border-[var(--border-subtle)] rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow">
                     <div className="flex items-start justify-between mb-2">
                         <h3 className="font-semibold text-sm flex items-center gap-2"><Link size={14}/> {c.name}</h3>
                         <button onClick={() => deleteChain(c.id)} className="text-red-500 p-1 luxury-button-ghost rounded"><Trash2 size={14}/></button>
@@ -259,7 +259,7 @@ export default function PromptList() {
 function PromptItem({ prompt, onEdit, onUse, onDelete }: { prompt: Prompt, onEdit: () => void, onUse: () => void, onDelete: () => void }) {
     const [menuOpen, setMenuOpen] = useState(false);
     return (
-        <div draggable onDragStart={(e) => e.dataTransfer.setData('text/plain', prompt.id)} className="bg-[var(--bg-surface)] luxury-card border border-[var(--border-subtle)] rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow relative cursor-move">
+        <div draggable onDragStart={(e) => e.dataTransfer.setData('text/plain', prompt.id)} className="luxury-input border border-[var(--border-subtle)] rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow relative cursor-move">
             <div className="flex items-start justify-between mb-1">
                 <h3 className="font-semibold text-sm truncate pr-2 flex items-center gap-1">
                     {prompt.isFavorite && <Star size={12} className="text-yellow-500 fill-current" />}
@@ -276,7 +276,7 @@ function PromptItem({ prompt, onEdit, onUse, onDelete }: { prompt: Prompt, onEdi
             </div>
             
             {menuOpen && (
-                <div className="absolute top-8 right-2 bg-[var(--bg-surface)] luxury-card border border-[var(--border-subtle)] shadow-xl rounded py-1 z-10 w-24 text-sm">
+                <div className="absolute top-8 right-2 luxury-input border border-[var(--border-subtle)] shadow-xl rounded py-1 z-10 w-24 text-sm">
                     <button onClick={() => { setMenuOpen(false); onEdit(); }} className="w-full text-left px-3 py-1 luxury-button-ghost">Edit</button>
                     <button onClick={() => { setMenuOpen(false); onDelete(); }} className="w-full text-left px-3 py-1 luxury-button-ghost text-red-500">Delete</button>
                 </div>

@@ -130,11 +130,11 @@ export default function ChainRunnerModal({ chain, onClose, onInsertResult }: Cha
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
-      <div className="bg-[var(--bg-base)] rounded-xl shadow-2xl w-full max-w-lg flex flex-col max-h-[80vh]">
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-md z-[60] flex items-center justify-center p-4">
+      <div className="luxury-glass-panel shadow-2xl border border-[var(--glass-border)] animate-slide-up w-full max-w-lg flex flex-col max-h-[80vh]">
         <div className="flex items-center justify-between p-4 border-b border-[var(--border-subtle)]">
           <h2 className="font-bold">Run Chain: {chain.name}</h2>
-          <button onClick={handleClose} className="p-1 luxury-button-ghost rounded"><X size={18}/></button>
+          <button onClick={handleClose} className="p-1 luxury-button-ghost"><X size={18}/></button>
         </div>
         
         <div className="p-4 flex-1 overflow-y-auto space-y-4">

@@ -19,12 +19,12 @@ export default function ChatWindow() {
 
   if (!activeConvo) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-[var(--bg-base)] text-[var(--text-secondary)]">
+      <div className="flex-1 flex items-center justify-center bg-transparent text-[var(--text-secondary)]">
         <div className="text-center p-6 max-w-sm">
           <p className="mb-4 text-base font-medium">No conversation selected</p>
           <button 
             onClick={() => createConversation()}
-            className="px-5 py-2.5 bg-[var(--accent-color)] text-white rounded-xl hover:opacity-90 transition-opacity font-semibold shadow-sm"
+            className="luxury-button-primary"
           >
             Start New Chat
           </button>
@@ -68,9 +68,9 @@ export default function ChatWindow() {
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full w-full bg-[var(--bg-base)] overflow-hidden relative">
+    <div className="flex-1 flex flex-col h-full w-full bg-transparent overflow-hidden relative">
       {/* Header bar */}
-      <div className="h-14 border-b border-[var(--border-subtle)] flex items-center justify-between px-4 shrink-0 bg-[var(--bg-surface)]/80 backdrop-blur z-10">
+      <div className="h-14 border-b border-[var(--border-subtle)] flex items-center justify-between px-4 shrink-0 bg-transparent  z-10">
         <div className="flex items-center gap-3 min-w-0 pr-2">
           <h2 className="font-semibold text-sm sm:text-base text-[var(--text-primary)] truncate">
             {activeConvo.title}
@@ -85,11 +85,7 @@ export default function ChatWindow() {
         <div className="flex items-center gap-2 shrink-0">
           <button 
             onClick={handleToggleCompare}
-            className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg transition-colors border ${
-              activeConvo.isComparison 
-                ? 'bg-blue-600 text-white border-blue-600 shadow-sm' 
-                : 'border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-            }`}
+            className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl transition-all duration-300 ${activeConvo.isComparison ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/30 scale-105' : 'luxury-glass hover:bg-[var(--bg-surface-hover)] text-slate-700 dark:text-slate-200'}`}
             title={activeConvo.isComparison ? "Exit Model Comparison" : "Compare 2 Models Side-by-Side"}
           >
             <Columns size={14} /> 
@@ -101,7 +97,7 @@ export default function ChatWindow() {
           
           <button 
             onClick={togglePromptVault}
-            className={`p-1.5 rounded-lg flex items-center gap-1.5 text-xs font-medium border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors ${isPromptVaultOpen ? 'bg-slate-200 dark:bg-slate-700 text-[var(--accent-color)]' : 'text-slate-600 dark:text-slate-300'}`}
+            className={`p-2 rounded-xl flex items-center gap-1.5 text-xs font-medium transition-all duration-300 ${isPromptVaultOpen ? 'bg-[var(--accent-color)] text-white shadow-lg' : 'luxury-glass hover:bg-[var(--bg-surface-hover)] text-[var(--text-primary)]'}`}
             title="Toggle Prompt Vault (Ctrl+/)"
           >
             <BookOpen size={15} />
@@ -110,7 +106,7 @@ export default function ChatWindow() {
 
           <button 
             onClick={() => setShowInsights(!showInsights)} 
-            className={`p-1.5 rounded-lg hidden xl:flex items-center text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors ${showInsights ? 'bg-slate-200 dark:bg-slate-700 text-[var(--accent-color)]' : ''}`}
+            className={`p-2 rounded-xl hidden xl:flex items-center transition-all duration-300 ${showInsights ? 'bg-[var(--accent-color)] text-white shadow-lg' : 'luxury-glass hover:bg-[var(--bg-surface-hover)] text-[var(--text-primary)]'}`}
             title="Toggle Insights"
           >
             <PieChart size={16}/>

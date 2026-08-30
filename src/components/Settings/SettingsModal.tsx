@@ -153,14 +153,14 @@ export default function SettingsModal({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-[var(--bg-base)] rounded-xl shadow-2xl w-full max-w-3xl flex flex-col h-[600px] max-h-full overflow-hidden">
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-md z-50 flex items-center justify-center p-4">
+      <div className="luxury-glass-panel shadow-2xl border border-[var(--glass-border)] animate-slide-up w-full max-w-3xl flex flex-col h-[600px] max-h-full overflow-hidden">
         <div className="flex items-center justify-between p-4 border-b border-[var(--border-subtle)]">
           <h2 className="text-xl font-bold">Settings</h2>
           <button
             onClick={onClose}
             aria-label="Close settings"
-            className="p-2 luxury-button-ghost rounded-lg"
+            className="p-2 luxury-button-ghost-lg"
           >
             <X size={20} />
           </button>
@@ -218,13 +218,13 @@ export default function SettingsModal({ onClose }: { onClose: () => void }) {
                   <input
                     type="password"
                     placeholder="Enter Master Passphrase"
-                    className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-[var(--border-subtle)] rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full p-3 luxury-input rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
                     value={localPassphrase}
                     onChange={(e) => setLocalPassphrase(e.target.value)}
                   />
                   <button
                     type="submit"
-                    className="w-full py-3 bg-[var(--accent-color)] hover:bg-[var(--accent-color)] text-white rounded-lg transition-colors font-medium"
+                    className="w-full py-3 luxury-button-primary-lg transition-colors font-medium"
                   >
                     Unlock
                   </button>
@@ -270,7 +270,7 @@ export default function SettingsModal({ onClose }: { onClose: () => void }) {
                                 <input
                                   type="text"
                                   placeholder="Base URL (e.g. https://api.openai.com/v1)"
-                                  className="w-full p-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-[var(--border-subtle)] outline-none focus:ring-2 focus:ring-blue-500 text-sm font-mono"
+                                  className="w-full p-2 rounded-lg luxury-input outline-none focus:ring-2 focus:ring-blue-500 text-sm font-mono"
                                   value={url}
                                   onChange={(e) =>
                                     handleSaveKey(
@@ -282,7 +282,7 @@ export default function SettingsModal({ onClose }: { onClose: () => void }) {
                                 <input
                                   type="password"
                                   placeholder={`Enter ${p.name} API Key`}
-                                  className="w-full p-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-[var(--border-subtle)] outline-none focus:ring-2 focus:ring-blue-500 text-sm font-mono"
+                                  className="w-full p-2 rounded-lg luxury-input outline-none focus:ring-2 focus:ring-blue-500 text-sm font-mono"
                                   value={key}
                                   onChange={(e) =>
                                     handleSaveKey(
@@ -305,7 +305,7 @@ export default function SettingsModal({ onClose }: { onClose: () => void }) {
                               <input
                                 type="password"
                                 placeholder={`Enter ${p.name} API Key`}
-                                className="w-full p-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-[var(--border-subtle)] outline-none focus:ring-2 focus:ring-blue-500 text-sm font-mono"
+                                className="w-full p-2 rounded-lg luxury-input outline-none focus:ring-2 focus:ring-blue-500 text-sm font-mono"
                                 value={apiKeys[p.id] || ''}
                                 onChange={(e) =>
                                   handleSaveKey(p.id, e.target.value)
@@ -349,7 +349,7 @@ export default function SettingsModal({ onClose }: { onClose: () => void }) {
                       <input
                         type="url"
                         placeholder="e.g. https://my-proxy.workers.dev/"
-                        className="w-full p-3 rounded-lg bg-slate-50 dark:bg-slate-800 border border-[var(--border-subtle)] outline-none focus:ring-2 focus:ring-[var(--accent-color)] text-sm font-mono"
+                        className="w-full p-3 rounded-lg luxury-input outline-none focus:ring-2 focus:ring-[var(--accent-color)] text-sm font-mono"
                         value={settings.proxyUrl || ''}
                         onChange={(e) =>
                           updateSettings({ proxyUrl: e.target.value })
@@ -369,7 +369,7 @@ export default function SettingsModal({ onClose }: { onClose: () => void }) {
                           onChange={(e) =>
                             updateSettings({ accentColor: e.target.value })
                           }
-                          className="w-12 h-12 p-1 rounded cursor-pointer bg-slate-50 dark:bg-slate-800 border border-[var(--border-subtle)]"
+                          className="w-12 h-12 p-1 rounded cursor-pointer luxury-input"
                         />
                         <button
                           onClick={() =>
@@ -425,7 +425,7 @@ export default function SettingsModal({ onClose }: { onClose: () => void }) {
                                 autoLockTimeout: parseInt(e.target.value),
                               })
                             }
-                            className="w-24 p-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-[var(--border-subtle)] outline-none"
+                            className="w-24 p-2 rounded-lg luxury-input outline-none"
                           />
                         </div>
                       )}

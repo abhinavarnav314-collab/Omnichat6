@@ -127,13 +127,13 @@ export default function PromptEditor({ promptId, onClose }: PromptEditorProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-md z-50 flex items-center justify-center p-4">
       <div
         ref={modalRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"
-        className="bg-[var(--bg-base)] rounded-xl shadow-2xl w-full max-w-2xl flex flex-col max-h-full"
+        className="luxury-glass-panel shadow-2xl border border-[var(--glass-border)] animate-slide-up w-full max-w-2xl flex flex-col max-h-full"
       >
         <div className="flex items-center justify-between p-4 border-b border-[var(--border-subtle)] shrink-0">
           <h2
@@ -147,7 +147,7 @@ export default function PromptEditor({ promptId, onClose }: PromptEditorProps) {
               <button
                 onClick={() => setShowHistory(!showHistory)}
                 aria-label="Version History"
-                className="p-2 luxury-button-ghost rounded text-[var(--text-secondary)]"
+                className="p-2 luxury-button-ghost text-[var(--text-secondary)]"
                 title="Version History"
               >
                 <History size={18} />
@@ -158,14 +158,14 @@ export default function PromptEditor({ promptId, onClose }: PromptEditorProps) {
               aria-label={
                 isFavorite ? 'Remove from favorites' : 'Add to favorites'
               }
-              className={`p-2 luxury-button-ghost rounded ${isFavorite ? 'text-yellow-500' : 'text-[var(--text-secondary)]'}`}
+              className={`p-2 luxury-button-ghost ${isFavorite ? 'text-yellow-500' : 'text-[var(--text-secondary)]'}`}
             >
               <Star size={18} className={isFavorite ? 'fill-current' : ''} />
             </button>
             <button
               onClick={onClose}
               aria-label="Close"
-              className="p-2 luxury-button-ghost rounded"
+              className="p-2 luxury-button-ghost"
             >
               <X size={18} />
             </button>
@@ -185,7 +185,7 @@ export default function PromptEditor({ promptId, onClose }: PromptEditorProps) {
                 id="prompt-title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full p-2 rounded bg-slate-50 dark:bg-slate-800 border border-[var(--border-subtle)] outline-none"
+                className="w-full p-2 rounded luxury-input outline-none"
                 placeholder="E.g. Code Reviewer"
               />
             </div>
@@ -200,7 +200,7 @@ export default function PromptEditor({ promptId, onClose }: PromptEditorProps) {
                 id="prompt-desc"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="w-full p-2 rounded bg-slate-50 dark:bg-slate-800 border border-[var(--border-subtle)] outline-none"
+                className="w-full p-2 rounded luxury-input outline-none"
                 placeholder="Brief description..."
               />
             </div>
@@ -216,11 +216,11 @@ export default function PromptEditor({ promptId, onClose }: PromptEditorProps) {
                   id="prompt-folder"
                   value={folderId}
                   onChange={(e) => setFolderId(e.target.value)}
-                  className="w-full p-2 rounded bg-slate-50 dark:bg-slate-800 border border-[var(--border-subtle)] outline-none"
+                  className="w-full p-2 rounded luxury-input outline-none"
                 >
-                  <option value="">None</option>
+                  <option value="" className="bg-[var(--bg-base)] text-[var(--text-primary)]">None</option>
                   {folders.map((f) => (
-                    <option key={f.id} value={f.id}>
+                    <option key={f.id} value={f.id} className="bg-[var(--bg-base)] text-[var(--text-primary)]">
                       {f.name}
                     </option>
                   ))}
@@ -237,7 +237,7 @@ export default function PromptEditor({ promptId, onClose }: PromptEditorProps) {
                   id="prompt-category"
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="w-full p-2 rounded bg-slate-50 dark:bg-slate-800 border border-[var(--border-subtle)] outline-none"
+                  className="w-full p-2 rounded luxury-input outline-none"
                   placeholder="e.g. Coding"
                 />
               </div>
@@ -256,7 +256,7 @@ export default function PromptEditor({ promptId, onClose }: PromptEditorProps) {
                 id="prompt-text"
                 value={text}
                 onChange={(e) => setText(e.target.value)}
-                className="w-full flex-1 p-2 rounded bg-slate-50 dark:bg-slate-800 border border-[var(--border-subtle)] outline-none font-mono text-sm resize-none"
+                className="w-full flex-1 p-2 rounded luxury-input outline-none font-mono text-sm resize-none"
                 placeholder="You are a helpful assistant. Please review the following code: {{code}}"
               />
             </div>
@@ -301,21 +301,21 @@ export default function PromptEditor({ promptId, onClose }: PromptEditorProps) {
             type="button"
             onClick={handleOptimize}
             disabled={isOptimizing}
-            className="flex items-center gap-2 px-4 py-2 bg-purple-100 text-purple-700 hover:bg-purple-200 dark:bg-purple-900/30 dark:text-purple-300 rounded-lg font-medium transition-colors mr-auto"
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500/20 to-fuchsia-500/20 hover:from-purple-500/30 hover:to-fuchsia-500/30 text-purple-600 dark:text-purple-300 rounded-xl border border-purple-500/20 font-medium transition-colors mr-auto"
           >
             <Wand2 size={16} />
             {isOptimizing ? 'Optimizing...' : 'Optimize with AI'}
           </button>
           <button
             onClick={onClose}
-            className="px-4 py-2 luxury-button-ghost rounded transition-colors text-slate-600 dark:text-slate-300"
+            className="px-4 py-2 luxury-button-ghost transition-colors text-slate-600 dark:text-slate-300"
           >
             Cancel
           </button>
           <button
             onClick={handleSave}
             disabled={!title || !text}
-            className="flex items-center gap-2 px-4 py-2 bg-[var(--accent-color)] hover:bg-[var(--accent-color)] text-white rounded transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 luxury-button-primary transition-colors disabled:opacity-50"
           >
             <Save size={16} /> Save
           </button>

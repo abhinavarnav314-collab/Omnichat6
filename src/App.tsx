@@ -13,6 +13,8 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import ChatWindow from './components/Chat/ChatWindow';
+import AppsPage from './components/Apps/AppsPage';
+import { LayoutGrid } from 'lucide-react';
 import PromptList from './components/PromptVault/PromptList';
 import SettingsModal from './components/Settings/SettingsModal';
 import CommandPalette from './components/Shared/CommandPalette';
@@ -26,6 +28,8 @@ function App() {
     isPromptVaultOpen,
     toggleSidebar,
     togglePromptVault,
+    currentView,
+    setCurrentView,
   } = useAppStore();
   const {
     conversations,
@@ -138,17 +142,23 @@ function App() {
 
   return (
     <div
-      className="flex h-screen w-full bg-[var(--bg-base)] text-[var(--text-primary)] overflow-hidden text-sm"
+      className="flex h-screen w-full text-[var(--text-primary)] overflow-hidden text-sm relative p-2 md:p-4 gap-2 md:gap-4 z-0 bg-transparent"
       style={{
         padding: 'var(--density-p, 0px)',
         gap: 'var(--density-gap, 0px)',
       }}
     >
+            {/* Background decoration */}
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none -z-10 fixed">
+         <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-[var(--accent-gradient-start)] opacity-20 blur-[120px] animate-float"></div>
+         <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-[var(--accent-gradient-end)] opacity-20 blur-[120px] animate-float" style={{animationDelay: '4s'}}></div>
+      </div>
+
       {/* Main Sidebar */}
       <div
-        className={`flex flex-col bg-[var(--bg-surface)] border-r border-[var(--border-subtle)] transition-all duration-300 ${isSidebarOpen ? 'w-64' : 'w-0 opacity-0 overflow-hidden'}`}
+        className={`flex flex-col luxury-glass-panel transition-all duration-500 ease-in-out z-20 ${isSidebarOpen ? 'w-72 opacity-100 shadow-2xl translate-x-0' : 'w-0 opacity-0 overflow-hidden border-none -translate-x-full'}`}
       >
-        <div className="p-4 flex items-center justify-between border-b border-[var(--border-subtle)] shrink-0">
+        <div className="p-5 flex items-center justify-between border-b border-[var(--border-subtle)] shrink-0 bg-gradient-to-r from-[var(--bg-surface)] to-transparent">
           <div className="flex items-center gap-2">
             <MessageSquare className="text-[var(--accent-color)]" />
             <h1 className="font-bold text-lg tracking-tight">OmniChat</h1>
@@ -158,12 +168,18 @@ function App() {
           </button>
         </div>
 
-        <div className="p-4 shrink-0 space-y-2">
+                <div className="p-4 shrink-0 space-y-2">
           <button
-            onClick={() => createConversation()}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2 luxury-button-primary font-medium"
+            onClick={() => { setCurrentView('chat'); createConversation(); }}
+            className={`w-full flex items-center justify-center gap-2 px-4 py-2 font-medium transition-all ${currentView === 'chat' ? 'luxury-button-primary' : 'luxury-button-ghost'}`}
           >
             <Plus size={18} /> New Chat
+          </button>
+          <button
+            onClick={() => setCurrentView('apps')}
+            className={`w-full flex items-center justify-center gap-2 px-4 py-2 font-medium transition-all ${currentView === 'apps' ? 'luxury-button-primary' : 'luxury-button-ghost'}`}
+          >
+            <LayoutGrid size={18} /> Premium Apps
           </button>
         </div>
 
@@ -171,7 +187,7 @@ function App() {
           {conversations.map((convo) => (
             <div
               key={convo.id}
-              onClick={() => setActiveId(convo.id)}
+              onClick={() => { setActiveId(convo.id); setCurrentView('chat'); }}
               className={`group flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all ${
                 activeId === convo.id
                   ? 'bg-[var(--bg-surface-hover)] text-[var(--accent-color)] shadow-sm'
@@ -220,8 +236,8 @@ function App() {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 bg-[var(--bg-base)] shadow-xl z-10">
-        <ChatWindow />
+      <div className="flex-1 flex flex-col min-w-0 luxury-glass-panel z-10 relative overflow-hidden shadow-2xl animate-slide-up">
+        {currentView === 'apps' ? <AppsPage /> : <ChatWindow />}
       </div>
 
       {/* Prompt Vault Sidebar */}
@@ -231,7 +247,7 @@ function App() {
       {!isSidebarOpen && (
         <button
           onClick={toggleSidebar}
-          className="absolute top-3 left-3 z-30 p-2 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-lg shadow-md hover:bg-[var(--bg-surface-hover)] text-[var(--text-secondary)]"
+          className="absolute top-5 left-5 z-30 p-2.5 luxury-glass rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
           title="Open Sidebar"
         >
           <Menu size={16} />
