@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
 import { ErrorBoundary } from './components/Shared/ErrorBoundary';
+import { ToastProvider } from './components/Shared/Toast';
 
 // Handle unhandled promise rejections globally
 window.addEventListener('unhandledrejection', (event) => {
@@ -12,7 +13,9 @@ window.addEventListener('unhandledrejection', (event) => {
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
     <ErrorBoundary>
-      <App />
+      <ToastProvider>
+        <App />
+      </ToastProvider>
     </ErrorBoundary>
   </React.StrictMode>,
 );

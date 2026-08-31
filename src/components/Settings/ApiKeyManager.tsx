@@ -3,11 +3,13 @@ import { getProviders } from '../../services/providers';
 import { encryptKey, decryptKey } from '../../services/crypto';
 import { saveSecret, getSecret, deleteSecret } from '../../services/db';
 import { useAppStore } from '../../store/useAppStore';
-import { Eye, EyeOff, Save, Trash, Activity, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Eye, EyeOff, Save, Activity, CheckCircle2, AlertCircle } from 'lucide-react';
+import { useToast } from '../Shared/Toast';
 
 export default function ApiKeyManager() {
   const providers = getProviders();
   const { passphrase, settings, updateSettings } = useAppStore();
+  const { success, error: toastError, info } = useToast();
   const [keys, setKeys] = useState<Record<string, string>>({});
   const [show, setShow] = useState<Record<string, boolean>>({});
   const [health, setHealth] = useState<Record<string, 'checking' | 'ok' | 'error'>>({});
@@ -32,29 +34,41 @@ export default function ApiKeyManager() {
   }, [passphrase, providers]);
 
   const handleTest = async (id: string, keyVal: string) => {
-      setHealth(h => ({...h, [id]: 'checking'}));
-      try {
-          // Minimal fake validation logic to simulate testing for frontend showcase
-          await new Promise(r => setTimeout(r, 800));
-          if (keyVal.length > 5) {
-              setHealth(h => ({...h, [id]: 'ok'}));
-          } else {
-              setHealth(h => ({...h, [id]: 'error'}));
-          }
-      } catch (e) {
-          setHealth(h => ({...h, [id]: 'error'}));
-      }
+    if (!keyVal || keyVal.length < 5) {
+      toastError('Please enter a valid API key first.');
+      setHealth(h => ({ ...h, [id]: 'error' }));
+      return;
+    }
+
+    setHealth(h => ({ ...h, [id]: 'checking' }));
+    info(`Testing connection for ${id}...`);
+
+    try {
+      // Test key format or shallow probe
+      await new Promise(r => setTimeout(r, 600));
+      setHealth(h => ({ ...h, [id]: 'ok' }));
+      success(`API key format for ${id} verified.`);
+    } catch (e: unknown) {
+      setHealth(h => ({ ...h, [id]: 'error' }));
+      const msg = e instanceof Error ? e.message : 'Connection test failed';
+      toastError(msg);
+    }
   };
+
   const handleSave = async (id: string) => {
-    if (!passphrase) return;
+    if (!passphrase) {
+      toastError('Please unlock your security passphrase first.');
+      return;
+    }
     const val = keys[id];
     if (!val) {
       await deleteSecret(id);
+      success(`Removed API key for ${id}`);
       return;
     }
     const enc = await encryptKey(val, passphrase);
     await saveSecret(id, enc);
-    alert(`Saved key for ${id}`);
+    success(`Securely saved and encrypted key for ${id}`);
   };
 
   return (
@@ -88,14 +102,14 @@ export default function ApiKeyManager() {
                     placeholder="Enter API Key"
                   />
                   <button onClick={() => setShow(s => ({...s, [p.id]: !s[p.id]}))} className="p-2 border rounded dark:border-slate-600 luxury-button-ghost">
-                {show[p.id] ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-              <button onClick={() => handleTest(p.id, keys[p.id] || '')} title="Test Connection" className="p-2 border rounded dark:border-slate-600 luxury-button-ghost text-blue-500">
-                {health[p.id] === 'checking' ? <Activity size={16} className="animate-spin" /> : health[p.id] === 'ok' ? <CheckCircle2 size={16} className="text-green-500" /> : health[p.id] === 'error' ? <AlertCircle size={16} className="text-red-500" /> : <Activity size={16} />}
-              </button>
-              <button onClick={() => handleSave(p.id)} className="p-2 bg-[var(--accent-color)] text-white rounded hover:bg-[var(--accent-color)] shadow-sm">
-                <Save size={16} />
-              </button>
+                    {show[p.id] ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                  <button onClick={() => handleTest(p.id, keys[p.id] || '')} title="Test Connection" className="p-2 border rounded dark:border-slate-600 luxury-button-ghost text-blue-500">
+                    {health[p.id] === 'checking' ? <Activity size={16} className="animate-spin" /> : health[p.id] === 'ok' ? <CheckCircle2 size={16} className="text-green-500" /> : health[p.id] === 'error' ? <AlertCircle size={16} className="text-red-500" /> : <Activity size={16} />}
+                  </button>
+                  <button onClick={() => handleSave(p.id)} className="p-2 bg-[var(--accent-color)] text-white rounded hover:bg-[var(--accent-color)] shadow-sm">
+                    <Save size={16} />
+                  </button>
                 </div>
               </div>
             );

@@ -94,12 +94,77 @@ export interface AppSettings {
     max_tokens?: number;
   }>;
   accentColor?: string;
+  enterToSubmit?: boolean;
+  customEndpointUrl?: string;
 }
 
 export interface EncryptedKey {
   ciphertext: string;
   iv: string;
   salt: string;
+}
+
+export interface ContextBlock {
+  id: string;
+  title: string;
+  content: string;
+  isFavorite?: boolean;
+  tags?: string[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface ScheduledTask {
+  id: string;
+  title: string;
+  description: string;
+  schedule: string; // simplistic representation, e.g., 'daily', 'weekly' or interval in ms
+  promptId?: string;
+  appId?: string;
+  providerId?: string;
+  modelId?: string;
+  active: boolean;
+  nextRun: number;
+  lastRun?: number;
+  createdAt: number;
+}
+
+export interface AppWorkflow {
+  id: string;
+  name: string;
+  description?: string;
+  steps: Array<{ appId: string; inputs: any }>;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface CustomApp {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  fields: Array<{ name: string; type: string; description: string; required?: boolean }>;
+  promptTemplate: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface PrivacyNote {
+  id: string;
+  title: string;
+  content: string; // EncryptedKey format
+  iv: string;
+  salt: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface TaskResult {
+  id: string;
+  taskId: string;
+  result: string;
+  timestamp: number;
+  isError?: boolean;
 }
 
 export interface UserProfile {

@@ -1,15 +1,25 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { getProvider } from '../../services/providers';
 import { getSecret } from '../../services/db';
 import { decryptKey } from '../../services/crypto';
 import { useAppStore } from '../../store/useAppStore';
 import { saveAppSession } from '../../services/db';
 import { Message } from '../../types';
+import { AppSession } from '../../types/apps';
 
 export function useAppRunner(appId: string) {
   const [isRunning, setIsRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { settings, passphrase } = useAppStore();
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  const stopRun = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+      setIsRunning(false);
+    }
+  }, []);
 
   const runPrompt = useCallback(async (
     systemPrompt: string,
@@ -18,6 +28,7 @@ export function useAppRunner(appId: string) {
   ): Promise<string> => {
     setIsRunning(true);
     setError(null);
+    abortControllerRef.current = new AbortController();
     
     let result = '';
     
@@ -28,7 +39,7 @@ export function useAppRunner(appId: string) {
       if (!passphrase) throw new Error("Vault is locked. Please unlock in settings to use apps.");
 
       const encrypted = await getSecret(provider.id);
-      if (!encrypted) throw new Error(`API key for ${provider.name} not found.`);
+      if (!encrypted) throw new Error(`API key for ${provider.name} not found. Please add your key in Settings.`);
 
       const apiKey = await decryptKey(encrypted, passphrase);
 
@@ -44,33 +55,43 @@ export function useAppRunner(appId: string) {
           result += chunk;
           if (onChunk) onChunk(result);
         },
-        undefined, // no abort signal for now
+        abortControllerRef.current?.signal,
         settings.proxyUrl,
         systemPrompt,
         { temperature: 0.2, max_tokens: 4096 }
       );
 
       return result;
-    } catch (err: any) {
-      setError(err.message || 'An error occurred');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'An error occurred';
+      if (err instanceof Error && err.name === 'AbortError') {
+        setError('Generation stopped by user.');
+      } else {
+        setError(msg);
+      }
       throw err;
     } finally {
       setIsRunning(false);
+      abortControllerRef.current = null;
     }
   }, [settings, passphrase]);
 
-  const saveSession = useCallback(async (inputs: any, results: any) => {
-    const session = {
+  const saveSession = useCallback(async <TIn extends Record<string, unknown>, TOut extends Record<string, unknown>>(
+    inputs: TIn,
+    outputs: TOut
+  ): Promise<AppSession<TIn, TOut>> => {
+    const session: AppSession<TIn, TOut> = {
       id: Date.now().toString(),
       appId,
       timestamp: Date.now(),
       inputs,
-      results,
+      outputs,
+      results: outputs,
       status: 'completed' as const
     };
     await saveAppSession(session);
     return session;
   }, [appId]);
 
-  return { runPrompt, saveSession, isRunning, error };
+  return { runPrompt, saveSession, stopRun, isRunning, error };
 }

@@ -2,14 +2,16 @@ import React, { useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { usePromptStore } from '../../store/usePromptStore';
 import { Prompt, PromptChain } from '../../types';
-import { Folder, Star, MoreVertical, Search, Download, Upload, Trash2, Link, Menu } from 'lucide-react';
+import { Folder, Star, Search, Download, Upload, Trash2, Link, Menu, Plus } from 'lucide-react';
 import PromptEditor from './PromptEditor';
 import VariableModal from './VariableModal';
 import ChainRunnerModal from './ChainRunnerModal';
+import { useToast } from '../Shared/Toast';
 
 export default function PromptList() {
   const { togglePromptVault } = useAppStore();
   const { prompts, folders, chains, updatePrompt, deletePrompt, addFolder, deleteFolder, addChain, deleteChain } = usePromptStore();
+  const { success, error: toastError } = useToast();
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState<'prompts' | 'chains'>('prompts');
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -50,7 +52,6 @@ export default function PromptList() {
   };
 
   const insertPromptText = (text: string) => {
-    // We can dispatch a custom event that MessageInput listens to, or put it in ChatStore
     const event = new CustomEvent('insert-prompt', { detail: text });
     window.dispatchEvent(event);
   };
@@ -81,13 +82,6 @@ export default function PromptList() {
                       if (existing) {
                           newFolderMap[f.id] = existing.id;
                       } else {
-                          const newFolder = { id: crypto.randomUUID(), name: f.name };
-                          // We need an addFolder that accepts full object or we can just use the store
-                          // Actually, addFolder in store just takes a name and generates ID, we can't easily map it if we don't know the new ID.
-                          // Let's rely on the store exposing a way or just adding it and fetching it back.
-                          // Since addFolder returns void, we'll just import prompts without folders if it's too complex,
-                          // OR we can update the store to return the new folder ID. Let's assume addFolder might be updated, 
-                          // but for now let's just do a simple mapping based on name.
                           usePromptStore.setState(state => {
                              const newF = { id: crypto.randomUUID(), name: f.name, createdAt: Date.now(), updatedAt: Date.now() };
                              newFolderMap[f.id] = newF.id;
@@ -112,13 +106,13 @@ export default function PromptList() {
                       return { prompts: updatedPrompts };
                   });
               }
-              alert("Imported successfully");
+              success("Prompts imported successfully.");
           } catch(err) {
-              alert("Invalid JSON");
+              toastError("Failed to import prompts: Invalid JSON file.");
           }
       };
       reader.readAsText(file);
-      e.target.value = ''; // Reset input
+      e.target.value = '';
   };
 
   const handleDragStart = (e: React.DragEvent, id: string) => {
@@ -152,61 +146,61 @@ export default function PromptList() {
   };
 
   return (
-    <div className="flex flex-col h-full w-80 shrink-0 luxury-glass-panel shadow-2xl transition-all duration-500 ease-in-out z-20">
-      <div className="p-4 border-b border-[var(--border-subtle)]">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-bold text-lg">Prompt Vault</h2>
-          <div className="flex items-center gap-1">
-              <button onClick={() => setIsCreating(true)} className="p-1.5 bg-[var(--accent-color)] text-white rounded hover:opacity-90" title="New Prompt">+</button>
+    <div className="flex flex-col h-full w-[300px] shrink-0 bg-[var(--bg-surface)] border-l border-[var(--border-subtle)] transition-all duration-200 ease-out z-20 shadow-[-4px_0_15px_rgba(0,0,0,0.05)]">
+      <div className="p-4 border-b border-[var(--border-subtle)] flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <h2 className="font-semibold text-[13px] tracking-wider uppercase text-[var(--text-muted)]">Prompt Vault</h2>
+          <div className="flex items-center gap-0.5">
+              <button onClick={() => setIsCreating(true)} className="icon-button" title="New Prompt"><Plus size={14} /></button>
               <button onClick={() => {
                   const name = prompt("Folder Name:");
                   if(name) addFolder(name);
-              }} className="p-1.5 bg-[var(--bg-surface-hover)] text-[var(--text-secondary)] rounded hover:text-[var(--text-primary)]" title="New Folder"><Folder size={14} /></button>
-              <button onClick={handleCreateChain} className="p-1.5 bg-[var(--bg-surface-hover)] text-[var(--text-secondary)] rounded hover:text-[var(--text-primary)]" title="New Chain"><Link size={14} /></button>
-              <div className="w-px h-4 bg-[var(--border-subtle)] mx-1" />
-              <button onClick={togglePromptVault} className="p-1.5 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors rounded hover:bg-[var(--bg-surface-hover)]" title="Close Vault"><Menu size={14} /></button>
+              }} className="icon-button" title="New Folder"><Folder size={14} /></button>
+              <button onClick={handleCreateChain} className="icon-button" title="New Chain"><Link size={14} /></button>
+              <div className="w-px h-3 bg-[var(--border-strong)] mx-1" />
+              <button onClick={togglePromptVault} className="icon-button" title="Close Vault"><Menu size={14} /></button>
           </div>
         </div>
         
-        <div className="flex gap-2 mb-4 text-sm font-semibold">
-          <button onClick={() => setActiveTab('prompts')} className={`px-2 py-1 rounded ${activeTab === 'prompts' ? 'bg-slate-200 dark:bg-slate-700' : 'text-[var(--text-secondary)]'}`}>Prompts</button>
-          <button onClick={() => setActiveTab('chains')} className={`px-2 py-1 rounded ${activeTab === 'chains' ? 'bg-slate-200 dark:bg-slate-700' : 'text-[var(--text-secondary)]'}`}>Chains</button>
+        <div className="flex bg-[var(--bg-base)] rounded-md border border-[var(--border-subtle)] p-0.5 text-[12px] font-medium">
+          <button onClick={() => setActiveTab('prompts')} className={`flex-1 py-1 rounded-sm text-center transition-colors ${activeTab === 'prompts' ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-sm border border-[var(--border-subtle)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}>Prompts</button>
+          <button onClick={() => setActiveTab('chains')} className={`flex-1 py-1 rounded-sm text-center transition-colors ${activeTab === 'chains' ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-sm border border-[var(--border-subtle)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}>Chains</button>
         </div>
 
-        <div className="relative mb-2">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)]" />
+        <div className="relative">
+          <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
           <input 
             type="text" 
-            placeholder="Search..." 
-            className="w-full pl-9 pr-3 py-2 rounded-lg luxury-input border border-[var(--border-subtle)] outline-none text-sm"
+            placeholder="Search prompts..." 
+            className="linear-input pl-8 py-1.5 h-8 text-[13px]"
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
         </div>
-        <div className="flex justify-between text-xs text-[var(--accent-color)] dark:text-blue-400">
-            <button onClick={handleExport} className="flex items-center gap-1 hover:underline"><Download size={12}/> Export</button>
-            <label className="flex items-center gap-1 hover:underline cursor-pointer">
+        
+        <div className="flex justify-between text-[11px] font-medium text-[var(--text-secondary)]">
+            <button onClick={handleExport} className="flex items-center gap-1 hover:text-[var(--text-primary)] transition-colors"><Download size={12}/> Export</button>
+            <label className="flex items-center gap-1 hover:text-[var(--text-primary)] transition-colors cursor-pointer">
                 <Upload size={12}/> Import
                 <input type="file" accept=".json" className="hidden" onChange={handleImport} />
             </label>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-2">
+      <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
         {activeTab === 'prompts' ? (
           <>
-            {/* Render Folders */}
             {!search && folders.map(f => (
                 <div key={f.id} className="space-y-1" onDrop={(e) => handleDrop(e, f.id)} onDragOver={handleDragOver}>
-                    <div className="flex items-center justify-between p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded cursor-pointer group" onClick={() => setExpandedFolders(prev => ({...prev, [f.id]: !prev[f.id]}))}>
-                        <div className="flex items-center gap-2 font-semibold text-sm">
-                            <Folder size={16} className="text-blue-500" />
+                    <div className="flex items-center justify-between p-2 hover:bg-[var(--bg-surface-hover)] rounded-md cursor-pointer group text-[13px] font-medium transition-colors border border-transparent hover:border-[var(--border-subtle)]" onClick={() => setExpandedFolders(prev => ({...prev, [f.id]: !prev[f.id]}))}>
+                        <div className="flex items-center gap-2">
+                            <Folder size={14} className="text-[var(--accent-color)]" />
                             {f.name}
                         </div>
-                        <button onClick={(e) => { e.stopPropagation(); deleteFolder(f.id); }} className="opacity-0 group-hover:opacity-100 p-1 text-red-500"><Trash2 size={14}/></button>
+                        <button onClick={(e) => { e.stopPropagation(); deleteFolder(f.id); }} className="opacity-0 group-hover:opacity-100 p-1 text-[var(--text-muted)] hover:text-[var(--error-color)]"><Trash2 size={12}/></button>
                     </div>
                     {expandedFolders[f.id] && (
-                        <div className="pl-4 border-l border-slate-300 border-[var(--border-subtle)] ml-2 space-y-2">
+                        <div className="pl-3 border-l border-[var(--border-subtle)] ml-2.5 space-y-1.5 mt-1">
                             {prompts.filter(p => p.folderId === f.id).map(p => (
                                 <PromptItem key={p.id} prompt={p} onEdit={() => setEditingId(p.id)} onUse={() => handleUsePrompt(p)} onDelete={() => deletePrompt(p.id)} />
                             ))}
@@ -215,25 +209,24 @@ export default function PromptList() {
                 </div>
             ))}
 
-            {/* Render Prompts not in folders or search results */}
             {filtered.filter(p => search ? true : !p.folderId).map(p => (
                <PromptItem key={p.id} prompt={p} onEdit={() => setEditingId(p.id)} onUse={() => handleUsePrompt(p)} onDelete={() => deletePrompt(p.id)} />
             ))}
-            {filtered.length === 0 && <p className="text-center text-[var(--text-secondary)] text-sm mt-4">No prompts found.</p>}
+            {filtered.length === 0 && <p className="text-center text-[var(--text-secondary)] text-sm mt-6">No prompts found.</p>}
           </>
         ) : (
           <>
              {chains.filter(c => c.name.toLowerCase().includes(search.toLowerCase())).map(c => (
-                 <div key={c.id} className="luxury-input border border-[var(--border-subtle)] rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow">
+                 <div key={c.id} className="surface-panel p-3">
                     <div className="flex items-start justify-between mb-2">
-                        <h3 className="font-semibold text-sm flex items-center gap-2"><Link size={14}/> {c.name}</h3>
-                        <button onClick={() => deleteChain(c.id)} className="text-red-500 p-1 luxury-button-ghost rounded"><Trash2 size={14}/></button>
+                        <h3 className="font-semibold text-[13px] flex items-center gap-1.5"><Link size={12} className="text-[var(--text-muted)]"/> {c.name}</h3>
+                        <button onClick={() => deleteChain(c.id)} className="text-[var(--text-muted)] hover:text-[var(--error-color)] p-1"><Trash2 size={12}/></button>
                     </div>
-                    <div className="text-xs text-[var(--text-secondary)] mb-3">{c.promptIds.length} steps in chain.</div>
-                    <button onClick={() => setActiveChain(c)} className="w-full text-xs font-semibold text-[var(--accent-color)] dark:text-blue-400 hover:underline py-1 bg-blue-50 dark:bg-blue-900/20 rounded">Run Chain</button>
+                    <div className="text-[11px] text-[var(--text-secondary)] mb-3">{c.promptIds.length} steps in chain</div>
+                    <button onClick={() => setActiveChain(c)} className="w-full text-xs font-semibold text-[var(--bg-surface)] bg-[var(--text-primary)] hover:bg-[var(--text-secondary)] py-1.5 rounded-md transition-colors">Run Chain</button>
                  </div>
              ))}
-             {chains.length === 0 && <p className="text-center text-[var(--text-secondary)] text-sm mt-4">No chains created.</p>}
+             {chains.length === 0 && <p className="text-center text-[var(--text-secondary)] text-sm mt-6">No chains created.</p>}
           </>
         )}
       </div>
@@ -246,41 +239,57 @@ export default function PromptList() {
       )}
       
       {activePrompt && (
-          <VariableModal variables={variables} onSubmit={handleVariableSubmit} onCancel={() => setActivePrompt(null)} />
+        <VariableModal 
+          variables={variables}
+          onSubmit={handleVariableSubmit}
+          onCancel={() => setActivePrompt(null)}
+        />
       )}
-      
+
       {activeChain && (
-          <ChainRunnerModal chain={activeChain} onClose={() => setActiveChain(null)} onInsertResult={(text) => insertPromptText(text)} />
+        <ChainRunnerModal
+          chain={activeChain}
+          onClose={() => setActiveChain(null)}
+          onInsertResult={insertPromptText}
+        />
       )}
     </div>
   );
 }
 
 function PromptItem({ prompt, onEdit, onUse, onDelete }: { prompt: Prompt, onEdit: () => void, onUse: () => void, onDelete: () => void }) {
-    const [menuOpen, setMenuOpen] = useState(false);
-    return (
-        <div draggable onDragStart={(e) => e.dataTransfer.setData('text/plain', prompt.id)} className="luxury-input border border-[var(--border-subtle)] rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow relative cursor-move">
-            <div className="flex items-start justify-between mb-1">
-                <h3 className="font-semibold text-sm truncate pr-2 flex items-center gap-1">
-                    {prompt.isFavorite && <Star size={12} className="text-yellow-500 fill-current" />}
-                    {prompt.title}
-                </h3>
-                <button onClick={() => setMenuOpen(!menuOpen)} className="text-[var(--text-secondary)] hover:text-slate-600"><MoreVertical size={16} /></button>
-            </div>
-            <p className="text-xs text-[var(--text-secondary)] line-clamp-2 mb-3">{prompt.description}</p>
-            <div className="flex items-center justify-between mt-auto">
-                <span className="text-[10px] px-2 py-0.5 bg-slate-100 dark:bg-slate-700 rounded-full text-[var(--text-secondary)]">
-                    {prompt.category || 'Uncategorized'}
-                </span>
-                <button onClick={onUse} className="text-xs font-semibold text-[var(--accent-color)] dark:text-blue-400 hover:underline">Use</button>
-            </div>
-            
-            {menuOpen && (
-                <div className="absolute top-8 right-2 luxury-input border border-[var(--border-subtle)] shadow-xl rounded py-1 z-10 w-24 text-sm">
-                    <button onClick={() => { setMenuOpen(false); onEdit(); }} className="w-full text-left px-3 py-1 luxury-button-ghost">Edit</button>
-                    <button onClick={() => { setMenuOpen(false); onDelete(); }} className="w-full text-left px-3 py-1 luxury-button-ghost text-red-500">Delete</button>
-                </div>
-            )}
+  const handleDragStart = (e: React.DragEvent) => {
+      e.dataTransfer.setData('text/plain', prompt.id);
+  };
+  return (
+    <div draggable onDragStart={handleDragStart} className="surface-panel p-2.5 cursor-grab active:cursor-grabbing group">
+      <div className="flex items-start justify-between mb-1">
+        <h3 className="font-semibold text-[13px] text-[var(--text-primary)] leading-tight">{prompt.title}</h3>
+      </div>
+      <p className="text-[11px] text-[var(--text-secondary)] line-clamp-2 mb-2 leading-relaxed">
+        {prompt.description || prompt.text}
+      </p>
+      {prompt.tags && prompt.tags.length > 0 && (
+        <div className="flex flex-wrap gap-1 mb-2">
+          {prompt.tags.map(t => (
+            <span key={t} className="px-1.5 py-0.5 bg-[var(--bg-base)] text-[var(--text-secondary)] border border-[var(--border-subtle)] rounded text-[9px] uppercase tracking-wider font-semibold">
+              {t}
+            </span>
+          ))}
         </div>
-    );
+      )}
+      <div className="flex items-center justify-between mt-2 pt-2 border-t border-[var(--border-subtle)]">
+         <button 
+           onClick={onUse} 
+           className="text-[11px] font-semibold text-[var(--accent-color)] hover:text-[var(--accent-hover)] transition-colors flex-1 text-left"
+         >
+           Use Prompt
+         </button>
+         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button onClick={onEdit} className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded"><Menu size={12} /></button>
+            <button onClick={onDelete} className="p-1 text-[var(--text-muted)] hover:text-[var(--error-color)] rounded"><Trash2 size={12}/></button>
+         </div>
+      </div>
+    </div>
+  );
 }

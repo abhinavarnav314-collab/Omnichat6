@@ -15,8 +15,8 @@ interface AppState {
   passphraseUnlocked: boolean;
   passphrase: string | null;
   isSidebarOpen: boolean;
-  currentView: 'chat' | 'apps';
-  setCurrentView: (view: 'chat' | 'apps') => void;
+  currentView: 'chat' | 'apps' | 'workspace';
+  setCurrentView: (view: 'chat' | 'apps' | 'workspace') => void;
   isPromptVaultOpen: boolean;
   updateSettings: (newSettings: Partial<AppSettings>) => void;
   unlock: (passphrase: string) => void;
@@ -89,7 +89,7 @@ export const useAppStore = create<AppState>((set, get) => {
     passphrase: null,
     isSidebarOpen: true,
     isPromptVaultOpen: false,
-    currentView: 'chat',
+    currentView: 'workspace',
     setCurrentView: (view) => set({ currentView: view }),
     updateSettings: (newSettings) =>
       set((state) => {

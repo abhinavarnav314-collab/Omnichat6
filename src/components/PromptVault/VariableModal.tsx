@@ -18,12 +18,13 @@ export default function VariableModal({ variables, onSubmit, onCancel }: Variabl
       }
     };
     
-    // Focus Trap
     const handleTab = (e: KeyboardEvent) => {
       if (e.key !== 'Tab' || !modalRef.current) return;
       const focusableElements = modalRef.current.querySelectorAll(
         'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
       );
+      if (focusableElements.length === 0) return;
+      
       const firstElement = focusableElements[0] as HTMLElement;
       const lastElement = focusableElements[focusableElements.length - 1] as HTMLElement;
 
@@ -43,7 +44,6 @@ export default function VariableModal({ variables, onSubmit, onCancel }: Variabl
     document.addEventListener('keydown', handleKeyDown);
     document.addEventListener('keydown', handleTab);
     
-    // Auto-focus first input
     const inputs = modalRef.current?.querySelectorAll('input');
     if (inputs && inputs.length > 0) {
       inputs[0].focus();
@@ -61,24 +61,24 @@ export default function VariableModal({ variables, onSubmit, onCancel }: Variabl
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div ref={modalRef} role="dialog" aria-modal="true" aria-labelledby="modal-title" className="bg-[var(--bg-base)] rounded-xl shadow-2xl w-full max-w-md flex flex-col max-h-full">
-        <div className="flex items-center justify-between p-4 border-b border-[var(--border-subtle)] shrink-0">
-          <h2 id="modal-title" className="text-lg font-bold text-[var(--text-primary)]">Fill Variables</h2>
-          <button onClick={onCancel} aria-label="Close" className="p-1 luxury-button-ghost rounded">
-            <X size={20} />
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-[2px] z-50 flex items-center justify-center p-4">
+      <div ref={modalRef} role="dialog" aria-modal="true" aria-labelledby="modal-title" className="surface-panel animate-scale-in w-full max-w-sm flex flex-col shadow-2xl">
+        <div className="flex items-center justify-between p-4 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] shrink-0">
+          <h2 id="modal-title" className="text-[13px] font-semibold text-[var(--text-primary)] uppercase tracking-wider">Fill Variables</h2>
+          <button onClick={onCancel} aria-label="Close" className="icon-button">
+            <X size={16} />
           </button>
         </div>
-        <div className="p-4 overflow-y-auto">
+        <div className="p-5 overflow-y-auto bg-[var(--bg-surface)]">
           <form id="var-form" onSubmit={handleSubmit} className="space-y-4">
             {variables.map(v => (
               <div key={v}>
-                <label htmlFor={`var-${v}`} className="block text-sm font-semibold mb-1 text-slate-700 dark:text-slate-300">{v}</label>
+                <label htmlFor={`var-${v}`} className="block text-[12px] font-semibold text-[var(--text-secondary)] mb-1.5 uppercase tracking-wider">{v}</label>
                 <input 
                   id={`var-${v}`}
                   type="text"
                   required
-                  className="w-full p-2 rounded bg-slate-50 dark:bg-slate-800 border border-[var(--border-subtle)] outline-none focus:ring-2 focus:ring-blue-500"
+                  className="linear-input"
                   value={values[v] || ''}
                   onChange={e => setValues({ ...values, [v]: e.target.value })}
                 />
@@ -86,11 +86,11 @@ export default function VariableModal({ variables, onSubmit, onCancel }: Variabl
             ))}
           </form>
         </div>
-        <div className="p-4 border-t border-[var(--border-subtle)] flex justify-end gap-2 shrink-0">
-          <button onClick={onCancel} className="px-4 py-2 luxury-button-ghost rounded transition-colors text-slate-600 dark:text-slate-300">
+        <div className="p-4 border-t border-[var(--border-subtle)] bg-[var(--bg-surface)] flex justify-end gap-2 shrink-0">
+          <button onClick={onCancel} className="linear-button-secondary">
             Cancel
           </button>
-          <button type="submit" form="var-form" className="px-4 py-2 bg-[var(--accent-color)] hover:bg-[var(--accent-color)] text-white rounded transition-colors">
+          <button type="submit" form="var-form" className="linear-button-primary">
             Insert Prompt
           </button>
         </div>

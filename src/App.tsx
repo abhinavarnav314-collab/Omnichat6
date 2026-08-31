@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useAppStore } from './store/useAppStore';
 import { useChatStore } from './store/useChatStore';
 import { usePromptStore } from './store/usePromptStore';
+import { useMetaStore } from './store/useMetaStore';
 import {
   MessageSquare,
   Plus,
@@ -10,16 +11,19 @@ import {
   X,
   DownloadCloud,
   WifiOff,
-  AlertTriangle,
+  LayoutGrid,
+  Lock
 } from 'lucide-react';
 import ChatWindow from './components/Chat/ChatWindow';
 import AppsPage from './components/Apps/AppsPage';
-import { LayoutGrid } from 'lucide-react';
 import PromptList from './components/PromptVault/PromptList';
 import SettingsModal from './components/Settings/SettingsModal';
 import CommandPalette from './components/Shared/CommandPalette';
 import ReloadPrompt from './components/Shared/ReloadPrompt';
 import OnboardingWizard from './components/Onboarding/OnboardingWizard';
+import WorkspaceDashboard from './components/Workspace/WorkspaceDashboard';
+import TaskRunner from './components/Shared/TaskRunner';
+import PrivacyVaultModal from './components/Settings/PrivacyVaultModal';
 
 function App() {
   const {
@@ -40,9 +44,11 @@ function App() {
     deleteConversation,
   } = useChatStore();
   const { loadPrompts } = usePromptStore();
+  const { loadData: loadMetaData } = useMetaStore();
 
   const [showSettings, setShowSettings] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
+  const [showPrivacyVault, setShowPrivacyVault] = useState(false);
 
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
@@ -50,37 +56,25 @@ function App() {
   useEffect(() => {
     loadConversations();
     loadPrompts();
-  }, [loadConversations, loadPrompts]);
+    loadMetaData();
+  }, [loadConversations, loadPrompts, loadMetaData]);
 
   useEffect(() => {
     if (settings.theme === 'system') {
       const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
       document.documentElement.classList.toggle('dark', isDark);
     } else {
-      document.documentElement.classList.toggle(
-        'dark',
-        settings.theme === 'dark'
-      );
+      document.documentElement.classList.toggle('dark', settings.theme === 'dark');
     }
   }, [settings.theme]);
 
   useEffect(() => {
-    document.documentElement.style.setProperty(
-      '--accent-color',
-      settings.accentColor || '#2563eb'
-    );
-
-    let fontSize = '16px';
-    if (settings.fontSize === 'small') fontSize = '14px';
-    if (settings.fontSize === 'large') fontSize = '18px';
+    document.documentElement.style.setProperty('--accent-color', settings.accentColor || '#5E6AD2');
+    document.documentElement.style.setProperty('--accent-hover', `${settings.accentColor || '#5E6AD2'}E6`);
+    let fontSize = '14px';
+    if (settings.fontSize === 'large') fontSize = '16px';
     document.documentElement.style.fontSize = fontSize;
-
-    if (settings.uiDensity === 'compact') {
-      document.documentElement.style.setProperty('--density-multiplier', '0.5');
-    } else {
-      document.documentElement.style.setProperty('--density-multiplier', '1');
-    }
-  }, [settings.accentColor, settings.uiDensity, settings.fontSize]);
+  }, [settings.accentColor, settings.fontSize]);
 
   // PWA Install & Offline
   useEffect(() => {
@@ -96,10 +90,7 @@ function App() {
     window.addEventListener('offline', handleOffline);
 
     return () => {
-      window.removeEventListener(
-        'beforeinstallprompt',
-        handleBeforeInstallPrompt
-      );
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
@@ -113,25 +104,43 @@ function App() {
     }
   };
 
-  // Keyboard Shortcuts
+  // Global Keyboard Shortcuts
   useEffect(() => {
     const isModifierPressed = (e: KeyboardEvent) => e.ctrlKey || e.metaKey;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (isModifierPressed(e) && e.shiftKey && e.key.toLowerCase() === 'p') {
+      const activeEl = document.activeElement as HTMLElement | null;
+      const isInput = activeEl && ['INPUT', 'TEXTAREA', 'SELECT'].includes(activeEl.tagName);
+
+      if (
+        (isModifierPressed(e) && e.key.toLowerCase() === 'k') ||
+        (isModifierPressed(e) && e.shiftKey && e.key.toLowerCase() === 'p')
+      ) {
         e.preventDefault();
-        setShowCommandPalette(true);
+        setShowCommandPalette((prev) => !prev);
       } else if (isModifierPressed(e) && e.key === '/') {
         e.preventDefault();
         togglePromptVault();
-      } else if (isModifierPressed(e) && e.key.toLowerCase() === 'n') {
+      } else if (isModifierPressed(e) && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        toggleSidebar();
+      } else if (isModifierPressed(e) && e.shiftKey && e.key.toLowerCase() === 'n') {
+        e.preventDefault();
+        createConversation(true);
+      } else if (isModifierPressed(e) && e.key.toLowerCase() === 'n' && !isInput) {
         e.preventDefault();
         createConversation();
+      } else if (isModifierPressed(e) && e.key === ',' && !isInput) {
+        e.preventDefault();
+        setShowSettings((prev) => !prev);
+      } else if (e.key === 'Escape') {
+        setShowCommandPalette(false);
+        setShowSettings(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [togglePromptVault, createConversation]);
+  }, [togglePromptVault, toggleSidebar, createConversation]);
 
   const totalCost = useMemo(() => {
     return conversations.reduce(
@@ -141,66 +150,71 @@ function App() {
   }, [conversations]);
 
   return (
-    <div
-      className="flex h-screen w-full text-[var(--text-primary)] overflow-hidden text-sm relative p-2 md:p-4 gap-2 md:gap-4 z-0 bg-transparent"
-      style={{
-        padding: 'var(--density-p, 0px)',
-        gap: 'var(--density-gap, 0px)',
-      }}
-    >
-            {/* Background decoration */}
-      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none -z-10 fixed">
-         <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-[var(--accent-gradient-start)] opacity-20 blur-[120px] animate-float"></div>
-         <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-[var(--accent-gradient-end)] opacity-20 blur-[120px] animate-float" style={{animationDelay: '4s'}}></div>
-      </div>
-
+    <div className="flex h-screen w-full bg-[var(--bg-base)] text-[var(--text-primary)] overflow-hidden font-sans">
       {/* Main Sidebar */}
       <div
-        className={`flex flex-col luxury-glass-panel transition-all duration-500 ease-in-out z-20 ${isSidebarOpen ? 'w-72 opacity-100 shadow-2xl translate-x-0' : 'w-0 opacity-0 overflow-hidden border-none -translate-x-full'}`}
+        className={`flex flex-col bg-[var(--bg-surface)] border-r border-[var(--border-subtle)] transition-all duration-200 ease-out z-20 ${
+          isSidebarOpen ? 'w-[260px]' : 'w-0 overflow-hidden opacity-0 border-none'
+        }`}
       >
-        <div className="p-5 flex items-center justify-between border-b border-[var(--border-subtle)] shrink-0 bg-gradient-to-r from-[var(--bg-surface)] to-transparent">
-          <div className="flex items-center gap-2">
-            <MessageSquare className="text-[var(--accent-color)]" />
-            <h1 className="font-bold text-lg tracking-tight">OmniChat</h1>
+        <div className="h-12 flex items-center justify-between px-4 border-b border-[var(--border-subtle)] shrink-0">
+          <div className="flex items-center gap-2 text-[var(--text-primary)]">
+            <MessageSquare size={16} className="text-[var(--text-primary)]" />
+            <h1 className="font-semibold text-[13px] tracking-tight uppercase">OmniChat</h1>
           </div>
-          <button onClick={toggleSidebar} className="p-1 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors rounded hover:bg-[var(--bg-surface-hover)]" title="Close Sidebar">
-            <Menu size={16} />
+          <button onClick={toggleSidebar} className="icon-button" title="Close Sidebar (⌘B)">
+            <Menu size={14} />
           </button>
         </div>
 
-                <div className="p-4 shrink-0 space-y-2">
+        <div className="p-3 shrink-0 flex flex-col gap-1">
+          <button
+            onClick={() => setCurrentView('workspace')}
+            className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors ${
+              currentView === 'workspace' ? 'bg-[var(--bg-surface-hover)] font-medium text-[var(--text-primary)]' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-surface-hover)] hover:text-[var(--text-primary)]'
+            }`}
+          >
+            <LayoutGrid size={14} /> Workspace
+          </button>
           <button
             onClick={() => { setCurrentView('chat'); createConversation(); }}
-            className={`w-full flex items-center justify-center gap-2 px-4 py-2 font-medium transition-all ${currentView === 'chat' ? 'luxury-button-primary' : 'luxury-button-ghost'}`}
+            className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors ${
+              currentView === 'chat' ? 'bg-[var(--bg-surface-hover)] font-medium text-[var(--text-primary)]' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-surface-hover)] hover:text-[var(--text-primary)]'
+            }`}
           >
-            <Plus size={18} /> New Chat
+            <Plus size={14} /> New Chat
           </button>
           <button
             onClick={() => setCurrentView('apps')}
-            className={`w-full flex items-center justify-center gap-2 px-4 py-2 font-medium transition-all ${currentView === 'apps' ? 'luxury-button-primary' : 'luxury-button-ghost'}`}
+            className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors ${
+              currentView === 'apps' ? 'bg-[var(--bg-surface-hover)] font-medium text-[var(--text-primary)]' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-surface-hover)] hover:text-[var(--text-primary)]'
+            }`}
           >
-            <LayoutGrid size={18} /> Premium Apps
+            <LayoutGrid size={14} /> Premium Apps
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-2 space-y-1">
+        <div className="px-4 pb-2 text-[11px] font-semibold tracking-wider text-[var(--text-muted)] uppercase mt-2">
+          Conversations
+        </div>
+        <div className="flex-1 overflow-y-auto px-2 space-y-0.5">
           {conversations.map((convo) => (
             <div
               key={convo.id}
               onClick={() => { setActiveId(convo.id); setCurrentView('chat'); }}
-              className={`group flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all ${
+              className={`group flex items-center justify-between px-3 py-2 rounded-md cursor-pointer text-[13px] transition-colors ${
                 activeId === convo.id
-                  ? 'bg-[var(--bg-surface-hover)] text-[var(--accent-color)] shadow-sm'
-                  : 'luxury-button-ghost text-[var(--text-secondary)]'
+                  ? 'bg-[var(--bg-surface-hover)] text-[var(--text-primary)] font-medium'
+                  : 'text-[var(--text-secondary)] hover:bg-[var(--bg-surface-hover)] hover:text-[var(--text-primary)]'
               }`}
             >
-              <div className="truncate flex-1 font-medium">{convo.title}</div>
+              <div className="truncate flex-1 pr-2">{convo.title}</div>
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   deleteConversation(convo.id);
                 }}
-                className="opacity-0 group-hover:opacity-100 p-1 hover:text-red-500 transition-opacity"
+                className="opacity-0 group-hover:opacity-100 text-[var(--text-muted)] hover:text-[var(--error-color)] transition-opacity"
               >
                 <X size={14} />
               </button>
@@ -208,57 +222,67 @@ function App() {
           ))}
         </div>
 
-        <div className="p-4 border-t border-[var(--border-subtle)] shrink-0 space-y-4">
+        <div className="p-3 border-t border-[var(--border-subtle)] shrink-0 flex flex-col gap-1">
           {isOffline && (
-            <div className="flex items-center gap-2 text-xs text-orange-500 bg-orange-50 dark:bg-orange-900/20 p-2 rounded-lg font-semibold justify-center">
+            <div className="flex items-center gap-2 px-3 py-1.5 text-[12px] text-[var(--warning-color)] bg-[var(--warning-color)]/10 rounded-md font-medium">
               <WifiOff size={14} /> Offline Mode
             </div>
           )}
           {deferredPrompt && (
             <button
               onClick={handleInstallClick}
-              className="w-full flex items-center justify-center gap-2 p-2 rounded-lg bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors font-medium text-sm border border-green-200 dark:border-green-800"
+              className="flex items-center gap-2 px-3 py-1.5 text-[12px] text-[var(--success-color)] bg-[var(--success-color)]/10 rounded-md font-medium hover:bg-[var(--success-color)]/20 transition-colors"
             >
-              <DownloadCloud size={16} /> Install App
+              <DownloadCloud size={14} /> Install App
             </button>
           )}
-          <div className="text-xs text-[var(--text-secondary)] flex justify-between">
-            <span>Cumulative Cost:</span>
-            <span className="font-mono font-bold">${totalCost.toFixed(3)}</span>
+          <div className="px-3 py-2 flex justify-between items-center text-[12px] text-[var(--text-muted)]">
+            <span>Spend</span>
+            <span className="font-mono">${totalCost.toFixed(3)}</span>
           </div>
           <button
-            onClick={() => setShowSettings(true)}
-            className="w-full flex items-center gap-2 p-2 rounded-lg luxury-button-ghost transition-colors text-[var(--text-secondary)] font-medium"
+            onClick={() => setShowPrivacyVault(true)}
+            className="flex items-center gap-2 px-3 py-2 rounded-md text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-surface-hover)] hover:text-[var(--text-primary)] transition-colors"
           >
-            <Settings size={18} /> Settings
+            <Lock size={14} /> Privacy Vault
+          </button>
+          <button
+            onClick={() => setShowSettings(true)}
+            className="flex items-center gap-2 px-3 py-2 rounded-md text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-surface-hover)] hover:text-[var(--text-primary)] transition-colors"
+          >
+            <Settings size={14} /> Settings
           </button>
         </div>
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 luxury-glass-panel z-10 relative overflow-hidden shadow-2xl animate-slide-up">
-        {currentView === 'apps' ? <AppsPage /> : <ChatWindow />}
+      <div className="flex-1 flex flex-col min-w-0 bg-[var(--bg-base)] z-10 relative overflow-hidden animate-fade-in">
+        {currentView === 'workspace' && <WorkspaceDashboard />}
+        {currentView === 'apps' && <AppsPage />}
+        {currentView === 'chat' && <ChatWindow />}
       </div>
 
       {/* Prompt Vault Sidebar */}
       {isPromptVaultOpen && <PromptList />}
 
-      {/* Toggle Buttons */}
+      {/* Toggle Sidebar Button when closed */}
       {!isSidebarOpen && (
         <button
           onClick={toggleSidebar}
-          className="absolute top-5 left-5 z-30 p-2.5 luxury-glass rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-          title="Open Sidebar"
+          className="absolute top-2 left-4 z-30 icon-button bg-[var(--bg-surface)] border border-[var(--border-subtle)] shadow-sm"
+          title="Open Sidebar (⌘B)"
         >
-          <Menu size={16} />
+          <Menu size={14} />
         </button>
       )}
 
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
+      {showPrivacyVault && <PrivacyVaultModal onClose={() => setShowPrivacyVault(false)} />}
       {showCommandPalette && (
         <CommandPalette onClose={() => setShowCommandPalette(false)} />
       )}
       <ReloadPrompt />
+      <TaskRunner />
       {!settings.onboardingComplete && <OnboardingWizard />}
     </div>
   );

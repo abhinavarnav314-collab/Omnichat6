@@ -2,102 +2,284 @@
 @tailwind components;
 @tailwind utilities;
 
-
 @layer base {
   :root {
-    --bg-base: #f8fafc;
-    --bg-surface: rgba(255, 255, 255, 0.7);
-    --bg-surface-hover: rgba(255, 255, 255, 0.9);
-    --border-subtle: rgba(0, 0, 0, 0.05);
-    --border-strong: rgba(0, 0, 0, 0.1);
-    --text-primary: #0f172a;
-    --text-secondary: #64748b;
-    --accent-gradient-start: #6366f1;
-    --accent-gradient-end: #a855f7;
-    --accent-color: #8b5cf6;
-    --glass-bg: rgba(255, 255, 255, 0.65);
-    --glass-border: rgba(255, 255, 255, 0.5);
-    --shadow-glass: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+    --bg-base: #FAFAFA;
+    --bg-surface: #FFFFFF;
+    --bg-surface-hover: #F4F4F5;
+    --border-subtle: rgba(0, 0, 0, 0.08);
+    --border-strong: rgba(0, 0, 0, 0.12);
+    --text-primary: #1A1A1D;
+    --text-secondary: #6B6B70;
+    --text-muted: #8A8A93;
+    --accent-color: #5E6AD2;
+    --accent-hover: #6E79D9;
+    --success-color: #3FB950;
+    --warning-color: #D29922;
+    --error-color: #F85149;
+    --code-bg: #F4F4F5;
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
   }
 
   .dark {
-    --bg-base: #030712;
-    --bg-surface: rgba(17, 24, 39, 0.65);
-    --bg-surface-hover: rgba(31, 41, 55, 0.85);
-    --border-subtle: rgba(255, 255, 255, 0.08);
-    --border-strong: rgba(255, 255, 255, 0.15);
-    --text-primary: #f9fafb;
-    --text-secondary: #9ca3af;
-    --accent-gradient-start: #818cf8;
-    --accent-gradient-end: #c084fc;
-    --accent-color: #a78bfa;
-    --glass-bg: rgba(17, 24, 39, 0.5);
-    --glass-border: rgba(255, 255, 255, 0.08);
-    --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+    --bg-base: #0A0A0B;
+    --bg-surface: #111113;
+    --bg-surface-hover: #1A1A1D;
+    --border-subtle: rgba(255, 255, 255, 0.06);
+    --border-strong: rgba(255, 255, 255, 0.1);
+    --text-primary: #EDEDEF;
+    --text-secondary: #9B9BA1;
+    --text-muted: #6B6B70;
+    --accent-color: #5E6AD2;
+    --accent-hover: #6E79D9;
+    --success-color: #3FB950;
+    --warning-color: #D29922;
+    --error-color: #F85149;
+    --code-bg: #0D0D0E;
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
   }
-  
+
   body {
     background-color: var(--bg-base);
     color: var(--text-primary);
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-size: 14px;
+    letter-spacing: normal;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
   }
 }
 
 @layer components {
-  .luxury-glass {
-    background: var(--glass-bg);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-    border: 1px solid var(--glass-border);
-    box-shadow: var(--shadow-glass);
+  /* Linear-style surface containers */
+  .surface-panel {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.15s ease-out, border-color 0.15s ease-out, box-shadow 0.15s ease-out;
+  }
+
+  .surface-panel:hover {
+    border-color: var(--border-strong);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+  }
+
+  /* Linear buttons */
+  .linear-button-primary {
+    background-color: var(--accent-color);
+    color: #ffffff;
+    font-weight: 500;
+    border-radius: 6px;
+    padding: 6px 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.15s ease-out;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), 0 1px 2px rgba(0,0,0,0.2);
+    border: 1px solid transparent;
+  }
+
+  .linear-button-primary:hover {
+    background-color: var(--accent-hover);
+  }
+
+  .linear-button-primary:active {
+    transform: scale(0.98);
+  }
+
+  .linear-button-secondary {
+    background-color: transparent;
+    color: var(--text-primary);
+    font-weight: 500;
+    border-radius: 6px;
+    padding: 6px 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: 1px solid var(--border-subtle);
+    transition: all 0.15s ease-out;
+  }
+
+  .linear-button-secondary:hover {
+    background-color: var(--bg-surface-hover);
+    border-color: var(--border-strong);
+  }
+
+  .linear-button-secondary:active {
+    transform: scale(0.98);
+  }
+
+  .linear-button-ghost {
+    background-color: transparent;
+    color: var(--text-secondary);
+    font-weight: 500;
+    border-radius: 6px;
+    padding: 6px 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.15s ease-out;
+    border: 1px solid transparent;
+  }
+
+  .linear-button-ghost:hover {
+    background-color: var(--bg-surface-hover);
+    color: var(--text-primary);
   }
   
-  .luxury-glass-panel {
-    @apply luxury-glass rounded-3xl overflow-hidden;
+  .linear-button-ghost:active {
+    transform: scale(0.98);
   }
 
-  .luxury-button-primary {
-    @apply bg-gradient-to-r from-[var(--accent-gradient-start)] to-[var(--accent-gradient-end)] text-white font-semibold rounded-full px-6 py-2.5 shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 border border-white/10;
+  .icon-button {
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    color: var(--text-secondary);
+    transition: all 0.15s ease-out;
+    background: transparent;
+    border: 1px solid transparent;
   }
 
-  .luxury-button-ghost {
-    @apply text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] rounded-2xl px-4 py-2 transition-all duration-300 active:scale-[0.98];
+  .icon-button:hover {
+    background-color: var(--bg-surface-hover);
+    color: var(--text-primary);
+  }
+  
+  .icon-button:active {
+    transform: scale(0.95);
   }
 
-  .luxury-input {
-    @apply luxury-glass focus:border-transparent text-[var(--text-primary)] rounded-2xl px-5 py-3 outline-none transition-all duration-300 focus:shadow-[0_0_0_2px_var(--accent-color)] focus:bg-[var(--bg-surface-hover)];
+  /* Linear inputs */
+  .linear-input {
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-primary);
+    border-radius: 6px;
+    padding: 6px 12px;
+    min-height: 32px;
+    outline: none;
+    transition: all 0.15s ease-out;
+    font-size: 14px;
+    width: 100%;
   }
 
+  .linear-input:hover {
+    border-color: var(--border-strong);
+  }
+
+  .linear-input:focus {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 2px rgba(94, 106, 210, 0.2);
+  }
+
+  /* Chat message bubbles */
   .message-bubble-user {
-    @apply bg-gradient-to-br from-[var(--accent-gradient-start)] to-[var(--accent-gradient-end)] text-white rounded-3xl rounded-tr-sm shadow-md;
+    background-color: var(--accent-color);
+    color: #ffffff;
+    border-radius: 12px 12px 4px 12px;
+    box-shadow: var(--shadow-sm);
   }
 
   .message-bubble-assistant {
-    @apply luxury-glass rounded-3xl rounded-tl-sm shadow-sm;
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-primary);
+    border-radius: 12px 12px 12px 4px;
+    box-shadow: var(--shadow-sm);
+  }
+
+  /* Keep legacy classes to prevent breakages during migration, aliasing them to the new linear style */
+  .luxury-glass {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+  }
+  .luxury-glass-panel {
+    @apply surface-panel;
+  }
+  .luxury-button-primary {
+    @apply linear-button-primary;
+  }
+  .luxury-button-ghost {
+    @apply linear-button-ghost;
+  }
+  .luxury-input {
+    @apply linear-input;
   }
 }
 
+/* Animations */
 @keyframes slideUpFade {
-  from { opacity: 0; transform: translateY(15px) scale(0.98); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 .animate-slide-up {
-  animation: slideUpFade 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: slideUpFade 0.2s ease-out forwards;
 }
 
-@keyframes float {
-  0%, 100% { transform: translateY(0) scale(1); }
-  50% { transform: translateY(-20px) scale(1.05); }
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
-.animate-float {
-  animation: float 12s ease-in-out infinite;
+.animate-fade-in {
+  animation: fadeIn 0.15s ease-out forwards;
 }
 
-@keyframes pulse-ring {
-  0% { box-shadow: 0 0 0 0 rgba(167, 139, 250, 0.4); }
-  70% { box-shadow: 0 0 0 10px rgba(167, 139, 250, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(167, 139, 250, 0); }
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
 }
+.animate-scale-in {
+  animation: scaleIn 0.2s ease-out forwards;
+}
+
+/* Typing indicator dots */
+@keyframes typingBounce {
+  0%, 100% { transform: translateY(0); opacity: 0.5; }
+  50% { transform: translateY(-4px); opacity: 1; }
+}
+
+.typing-dot {
+  animation: typingBounce 1s infinite ease-in-out;
+}
+.typing-dot:nth-child(1) { animation-delay: 0s; }
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+/* Custom Linear Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-subtle);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
 .animate-pulse-ring {
   animation: pulse-ring 2s infinite;
 }

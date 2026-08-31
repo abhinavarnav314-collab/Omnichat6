@@ -26,12 +26,12 @@ export default function ModelSelector({ isComparison = false }: { isComparison?:
           const currentProvId = models[idx]?.providerId || settings.defaultProviderId;
           const currentProv = providers.find(p => p.id === currentProvId) || providers[0];
           return (
-            <div key={idx} className="flex gap-1.5 items-center px-3 py-1.5 luxury-glass rounded-xl shadow-md text-xs">
-              <span className="font-bold text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 uppercase tracking-wider">
+            <div key={idx} className="flex items-center bg-[var(--bg-base)] border border-[var(--border-subtle)] rounded-md px-2 py-1 text-[13px] shadow-sm">
+              <span className="font-semibold text-[10px] px-1.5 py-0.5 rounded bg-[var(--bg-surface-hover)] border border-[var(--border-subtle)] text-[var(--text-secondary)] uppercase tracking-wider mr-2">
                 M{idx + 1}
               </span>
               <select 
-                className="bg-transparent text-[var(--text-primary)] text-xs font-medium outline-none cursor-pointer pr-1"
+                className="bg-transparent text-[var(--text-primary)] font-medium outline-none cursor-pointer pr-1"
                 value={currentProvId}
                 onChange={e => {
                   const newModels = [...models];
@@ -41,14 +41,14 @@ export default function ModelSelector({ isComparison = false }: { isComparison?:
                 }}
               >
                 {providers.map(p => (
-                  <option key={p.id} value={p.id} className="bg-[var(--bg-base)] text-[var(--text-primary)]">
+                  <option key={p.id} value={p.id} className="bg-[var(--bg-surface)] text-[var(--text-primary)]">
                     {p.name}
                   </option>
                 ))}
               </select>
               {currentProv.id !== 'custom' ? (
                 <select
-                  className="bg-transparent text-[var(--text-primary)] text-xs font-semibold outline-none cursor-pointer pl-2 ml-1 border-l border-[var(--glass-border)] max-w-[140px] truncate"
+                  className="bg-transparent text-[var(--text-secondary)] font-medium outline-none cursor-pointer pl-2 ml-1 border-l border-[var(--border-subtle)] max-w-[120px] truncate"
                   value={models[idx]?.modelId || currentProv.models[0]?.id}
                   onChange={e => {
                     const newModels = [...models];
@@ -57,7 +57,7 @@ export default function ModelSelector({ isComparison = false }: { isComparison?:
                   }}
                 >
                   {currentProv.models.map(m => (
-                    <option key={m.id} value={m.id} className="bg-[var(--bg-base)] text-[var(--text-primary)]">
+                    <option key={m.id} value={m.id} className="bg-[var(--bg-surface)] text-[var(--text-primary)]">
                       {m.name}
                     </option>
                   ))}
@@ -66,7 +66,7 @@ export default function ModelSelector({ isComparison = false }: { isComparison?:
                 <input 
                   type="text" 
                   placeholder="Model ID"
-                  className="bg-transparent text-[var(--text-primary)] text-xs font-medium outline-none w-24 pl-1 border-l border-slate-300 dark:border-slate-700"
+                  className="bg-transparent text-[var(--text-secondary)] font-medium outline-none w-24 pl-2 border-l border-[var(--border-subtle)]"
                   value={models[idx]?.modelId || ''}
                   onChange={e => {
                     const newModels = [...models];
@@ -85,11 +85,11 @@ export default function ModelSelector({ isComparison = false }: { isComparison?:
   const provider = providers.find(p => p.id === settings.defaultProviderId) || providers[0];
 
   return (
-    <div className="flex items-center gap-1.5 relative">
-      <div className="flex gap-1.5 items-center luxury-glass px-3 py-2 shadow-sm text-xs">
-        <Cpu size={14} className="text-[var(--accent-color)] shrink-0 opacity-80" />
+    <div className="flex items-center gap-2 relative">
+      <div className="flex items-center bg-[var(--bg-base)] border border-[var(--border-subtle)] rounded-md px-2 py-1 text-[13px] shadow-sm">
+        <Cpu size={14} className="text-[var(--text-muted)] shrink-0 mr-2" />
         <select 
-          className="bg-transparent text-[var(--text-primary)] text-xs font-semibold outline-none cursor-pointer"
+          className="bg-transparent text-[var(--text-primary)] font-medium outline-none cursor-pointer"
           value={settings.defaultProviderId}
           onChange={e => {
             const p = providers.find(x => x.id === e.target.value);
@@ -97,22 +97,22 @@ export default function ModelSelector({ isComparison = false }: { isComparison?:
           }}
         >
           {providers.map(p => (
-            <option key={p.id} value={p.id} className="bg-[var(--bg-base)] text-[var(--text-primary)] py-1">
+            <option key={p.id} value={p.id} className="bg-[var(--bg-surface)] text-[var(--text-primary)] py-1">
               {p.name}
             </option>
           ))}
         </select>
         
-        <span className="text-slate-300 dark:text-slate-700">|</span>
+        <div className="h-3 w-px bg-[var(--border-strong)] mx-2"></div>
 
         {provider.id !== 'custom' ? (
           <select
-            className="bg-transparent text-[var(--text-primary)] text-xs font-medium outline-none cursor-pointer max-w-[160px] truncate"
+            className="bg-transparent text-[var(--text-secondary)] font-medium outline-none cursor-pointer max-w-[140px] truncate"
             value={settings.defaultModelId}
             onChange={e => updateSettings({ defaultModelId: e.target.value })}
           >
             {provider.models.map(m => (
-              <option key={m.id} value={m.id} className="bg-[var(--bg-base)] text-[var(--text-primary)] py-1">
+              <option key={m.id} value={m.id} className="bg-[var(--bg-surface)] text-[var(--text-primary)] py-1">
                 {m.name}
               </option>
             ))}
@@ -121,7 +121,7 @@ export default function ModelSelector({ isComparison = false }: { isComparison?:
           <input 
             type="text" 
             placeholder="Custom model ID"
-            className="bg-transparent text-[var(--text-primary)] text-xs outline-none w-28"
+            className="bg-transparent text-[var(--text-secondary)] outline-none w-28 font-medium"
             value={settings.defaultModelId}
             onChange={e => updateSettings({ defaultModelId: e.target.value })}
           />
@@ -130,24 +130,24 @@ export default function ModelSelector({ isComparison = false }: { isComparison?:
 
       <button 
         onClick={() => setShowParams(!showParams)} 
-        className={`p-2 rounded-xl border border-[var(--glass-border)] transition-all duration-300 ${showParams ? 'bg-[var(--accent-color)] text-white shadow-lg shadow-[var(--accent-color)]/30 scale-105' : 'luxury-glass hover:bg-[var(--bg-surface-hover)] text-[var(--text-primary)]'}`}
+        className={`icon-button ${showParams ? 'bg-[var(--bg-surface-hover)] text-[var(--text-primary)] border-[var(--border-strong)]' : ''}`}
         title="Model Parameters"
       >
-        <Settings2 size={16} />
+        <Settings2 size={14} />
       </button>
 
       {showParams && (
-        <div className="absolute top-full right-0 mt-2 w-72 bg-[var(--bg-base)] border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl p-4 z-50 text-[var(--text-primary)]">
-          <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2 mb-3">
-            <h3 className="font-semibold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">Parameters</h3>
-            <span className="text-[10px] text-slate-400">{provider.name}</span>
+        <div className="absolute top-full right-0 mt-2 w-72 surface-panel p-4 z-50 text-[var(--text-primary)] animate-scale-in origin-top-right">
+          <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-2 mb-4">
+            <h3 className="font-semibold text-[11px] uppercase tracking-wider text-[var(--text-secondary)]">Parameters</h3>
+            <span className="text-[11px] text-[var(--text-muted)] font-medium">{provider.name}</span>
           </div>
 
-          <div className="space-y-4 text-xs">
+          <div className="space-y-5 text-[13px]">
             <div>
-              <div className="flex justify-between mb-1.5 font-medium">
+              <div className="flex justify-between mb-2 font-medium">
                 <span>Temperature</span>
-                <span className="font-mono text-[var(--accent-color)] font-bold">{activeConvo.parameters?.temperature ?? 0.7}</span>
+                <span className="font-mono text-[var(--text-secondary)]">{activeConvo.parameters?.temperature ?? 0.7}</span>
               </div>
               <input 
                 type="range" 
@@ -158,16 +158,16 @@ export default function ModelSelector({ isComparison = false }: { isComparison?:
                 value={activeConvo.parameters?.temperature ?? 0.7}
                 onChange={e => updateConversationParameters(activeConvo.id, { temperature: parseFloat(e.target.value) })}
               />
-              <div className="flex justify-between text-[10px] text-slate-400 mt-1">
+              <div className="flex justify-between text-[11px] text-[var(--text-muted)] mt-1.5">
                 <span>Precise</span>
                 <span>Creative</span>
               </div>
             </div>
 
             <div>
-              <div className="flex justify-between mb-1.5 font-medium">
+              <div className="flex justify-between mb-2 font-medium">
                 <span>Top P</span>
-                <span className="font-mono text-[var(--accent-color)] font-bold">{activeConvo.parameters?.top_p ?? 1}</span>
+                <span className="font-mono text-[var(--text-secondary)]">{activeConvo.parameters?.top_p ?? 1}</span>
               </div>
               <input 
                 type="range" 
@@ -181,10 +181,10 @@ export default function ModelSelector({ isComparison = false }: { isComparison?:
             </div>
 
             <div>
-              <label className="block mb-1 font-medium">Max Output Tokens</label>
+              <label className="block mb-2 font-medium">Max Output Tokens</label>
               <input 
                 type="number" 
-                className="w-full p-2 border rounded-lg luxury-input text-xs font-mono outline-none focus:border-blue-500"
+                className="linear-input text-[13px] font-mono"
                 value={activeConvo.parameters?.max_tokens ?? 4096}
                 onChange={e => updateConversationParameters(activeConvo.id, { max_tokens: parseInt(e.target.value) || undefined })}
               />
@@ -195,4 +195,3 @@ export default function ModelSelector({ isComparison = false }: { isComparison?:
     </div>
   );
 }
-

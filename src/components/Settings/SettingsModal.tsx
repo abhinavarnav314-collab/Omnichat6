@@ -10,7 +10,6 @@ import {
   Upload,
   Paintbrush,
   Lock,
-  RefreshCw,
   BarChart2,
   Users,
 } from 'lucide-react';
@@ -20,21 +19,17 @@ import {
   getSecret,
   saveSecret,
   clearAllData,
-  getConversations,
-  getPrompts,
-  getPromptFolders,
-  getAllPromptVersions,
-  getPromptChains,
-  saveConversation,
-  savePrompt,
-  savePromptFolder,
+  exportAllData,
+  importAllData,
 } from '../../services/db';
 import { encryptKey, decryptKey } from '../../services/crypto';
 import Analytics from './Analytics';
+import { useToast } from '../Shared/Toast';
 
 export default function SettingsModal({ onClose }: { onClose: () => void }) {
   const { settings, updateSettings, passphraseUnlocked, passphrase, unlock } =
     useAppStore();
+  const { success, error: toastError, confirmModal } = useToast();
   const [activeTab, setActiveTab] = useState<
     'general' | 'keys' | 'security' | 'data' | 'analytics'
   >('keys');
@@ -63,10 +58,14 @@ export default function SettingsModal({ onClose }: { onClose: () => void }) {
       };
       loadKeys();
     }
-  }, [passphraseUnlocked, passphrase]);
+  }, [passphraseUnlocked, passphrase, providers]);
 
   const handleUnlock = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!localPassphrase.trim()) {
+      toastError('Please enter a passphrase.');
+      return;
+    }
     try {
       const sentinel = await getSecret('auth_sentinel');
       if (!sentinel) {
@@ -75,16 +74,18 @@ export default function SettingsModal({ onClose }: { onClose: () => void }) {
           await encryptKey('AUTH_VERIFIED', localPassphrase)
         );
         unlock(localPassphrase);
+        success('Passphrase configured and vault unlocked.');
       } else {
         const decrypted = await decryptKey(sentinel, localPassphrase);
         if (decrypted === 'AUTH_VERIFIED') {
           unlock(localPassphrase);
+          success('Vault unlocked successfully.');
         } else {
-          alert('Invalid passphrase');
+          toastError('Invalid passphrase. Please verify and retry.');
         }
       }
     } catch (err) {
-      alert('Invalid passphrase');
+      toastError('Invalid passphrase. Unable to decrypt vault.');
     }
   };
 
@@ -94,422 +95,351 @@ export default function SettingsModal({ onClose }: { onClose: () => void }) {
     if (!value) return;
     const encrypted = await encryptKey(value, passphrase);
     await saveSecret(providerId, encrypted);
+    success(`Saved API key for ${providerId}`);
   };
 
-  const handleClearData = async () => {
-    if (
-      confirm(
-        'Are you sure? This will delete all conversations, prompts, API keys, and settings. This cannot be undone.'
-      )
-    ) {
-      await clearAllData();
-      localStorage.removeItem('omni-settings');
-      window.location.reload();
-    }
+  const handleClearData = () => {
+    confirmModal({
+      title: 'Wipe All Data?',
+      message: 'This will permanently delete all conversations, prompts, saved sessions, API keys, and settings. This action cannot be undone.',
+      destructive: true,
+      confirmText: 'Wipe Everything',
+      onConfirm: async () => {
+        await clearAllData();
+        localStorage.removeItem('omni-settings');
+        window.location.reload();
+      },
+    });
   };
 
   const handleExport = async () => {
-    const data = {
-      conversations: await getConversations(),
-      prompts: await getPrompts(),
-      promptFolders: await getPromptFolders(),
-      promptVersions: await getAllPromptVersions(),
-      promptChains: await getPromptChains(),
-    };
-    const blob = new Blob([JSON.stringify(data, null, 2)], {
-      type: 'application/json',
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `omnichat-backup-${new Date().toISOString().split('T')[0]}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    try {
+      const data = await exportAllData();
+      const blob = new Blob([JSON.stringify(data, null, 2)], {
+        type: 'application/json',
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `omnichat-backup-${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      success('Complete data backup exported successfully.');
+    } catch (e: unknown) {
+      toastError('Failed to export data backup.');
+    }
   };
 
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = async (e) => {
+    reader.onload = async (evt) => {
       try {
-        const data = JSON.parse(e.target?.result as string);
-        if (data.conversations) {
-          for (const c of data.conversations) await saveConversation(c);
+        const data = JSON.parse(evt.target?.result as string);
+        if (typeof data !== 'object' || data === null) {
+          throw new Error('Invalid JSON format');
         }
-        if (data.prompts) {
-          for (const p of data.prompts) await savePrompt(p);
-        }
-        if (data.promptFolders) {
-          for (const f of data.promptFolders) await savePromptFolder(f);
-        }
-        alert('Data imported successfully!');
-        window.location.reload();
+        await importAllData(data);
+        success('Data imported successfully! Refreshing...');
+        setTimeout(() => {
+          window.location.reload();
+        }, 600);
       } catch (err) {
-        alert('Failed to import data: Invalid format.');
+        toastError('Failed to import data: Invalid file format.');
       }
     };
     reader.readAsText(file);
   };
 
+  const tabs = [
+    { id: 'keys', icon: Key, label: 'API Keys' },
+    { id: 'general', icon: Settings2, label: 'General' },
+    { id: 'security', icon: Shield, label: 'Security' },
+    { id: 'analytics', icon: BarChart2, label: 'Analytics' },
+    { id: 'data', icon: Database, label: 'Data Management' }
+  ] as const;
+
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-md z-50 flex items-center justify-center p-4">
-      <div className="luxury-glass-panel shadow-2xl border border-[var(--glass-border)] animate-slide-up w-full max-w-3xl flex flex-col h-[600px] max-h-full overflow-hidden">
-        <div className="flex items-center justify-between p-4 border-b border-[var(--border-subtle)]">
-          <h2 className="text-xl font-bold">Settings</h2>
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-[2px] z-50 flex items-center justify-center p-4">
+      <div className="surface-panel animate-scale-in w-full max-w-4xl flex flex-col h-[650px] max-h-[90vh] overflow-hidden">
+        <div className="flex items-center justify-between p-4 border-b border-[var(--border-subtle)] shrink-0 bg-[var(--bg-surface)] z-10">
+          <h2 className="text-[14px] font-semibold text-[var(--text-primary)] tracking-wide">Settings</h2>
           <button
             onClick={onClose}
             aria-label="Close settings"
-            className="p-2 luxury-button-ghost-lg"
+            className="icon-button"
           >
-            <X size={20} />
+            <X size={16} />
           </button>
         </div>
 
         <div className="flex flex-1 overflow-hidden">
           {/* Sidebar */}
-          <div className="w-48 border-r border-[var(--border-subtle)] p-4 space-y-2 shrink-0 overflow-y-auto">
-            <button
-              onClick={() => setActiveTab('keys')}
-              className={`w-full flex items-center gap-2 p-2 rounded-lg text-sm transition-colors ${activeTab === 'keys' ? 'bg-blue-50 text-[var(--accent-color)] dark:bg-blue-900/50 dark:text-blue-400' : 'luxury-button-ghost'}`}
-            >
-              <Key size={16} /> API Keys
-            </button>
-            <button
-              onClick={() => setActiveTab('general')}
-              className={`w-full flex items-center gap-2 p-2 rounded-lg text-sm transition-colors ${activeTab === 'general' ? 'bg-blue-50 text-[var(--accent-color)] dark:bg-blue-900/50 dark:text-blue-400' : 'luxury-button-ghost'}`}
-            >
-              <Settings2 size={16} /> General
-            </button>
-            <button
-              onClick={() => setActiveTab('security')}
-              className={`w-full flex items-center gap-2 p-2 rounded-lg text-sm transition-colors ${activeTab === 'security' ? 'bg-blue-50 text-[var(--accent-color)] dark:bg-blue-900/50 dark:text-blue-400' : 'luxury-button-ghost'}`}
-            >
-              <Shield size={16} /> Security
-            </button>
-            <button
-              onClick={() => setActiveTab('analytics')}
-              className={`w-full flex items-center gap-2 p-2 rounded-lg text-sm transition-colors ${activeTab === 'analytics' ? 'bg-blue-50 text-[var(--accent-color)] dark:bg-blue-900/50 dark:text-blue-400' : 'luxury-button-ghost'}`}
-            >
-              <BarChart2 size={16} /> Analytics
-            </button>
-            <button
-              onClick={() => setActiveTab('data')}
-              className={`w-full flex items-center gap-2 p-2 rounded-lg text-sm transition-colors ${activeTab === 'data' ? 'bg-blue-50 text-[var(--accent-color)] dark:bg-blue-900/50 dark:text-blue-400' : 'luxury-button-ghost'}`}
-            >
-              <Database size={16} /> Data Backup
-            </button>
+          <div className="w-[200px] border-r border-[var(--border-subtle)] p-3 space-y-1 shrink-0 overflow-y-auto bg-[var(--bg-base)]">
+            {tabs.map(tab => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as any)}
+                  className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-[13px] transition-colors ${
+                    isActive 
+                      ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] font-medium shadow-sm border border-[var(--border-subtle)]' 
+                      : 'text-[var(--text-secondary)] hover:bg-[var(--bg-surface)] hover:text-[var(--text-primary)] border border-transparent'
+                  }`}
+                >
+                  <Icon size={14} className={isActive ? 'text-[var(--accent-color)]' : ''} /> 
+                  {tab.label}
+                </button>
+              );
+            })}
           </div>
 
-          {/* Content */}
-          <div className="flex-1 overflow-y-auto p-6">
+          {/* Content Area */}
+          <div className="flex-1 overflow-y-auto p-6 bg-[var(--bg-surface)]">
+            {/* ... Rest of the components in settings ... */}
             {!passphraseUnlocked ? (
-              <div className="flex flex-col items-center justify-center h-full max-w-sm mx-auto text-center space-y-6">
-                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 text-[var(--accent-color)] dark:text-blue-400 rounded-full">
-                  <Lock size={32} />
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold mb-2">Unlock Settings</h3>
-                  <p className="text-sm text-[var(--text-secondary)] mb-6">
-                    Enter your master passphrase to manage settings and keys.
+              <div className="h-full flex items-center justify-center">
+                <form
+                  onSubmit={handleUnlock}
+                  className="w-full max-w-sm surface-panel p-6 border border-[var(--border-subtle)]"
+                >
+                  <div className="w-12 h-12 bg-[var(--bg-surface-hover)] border border-[var(--border-subtle)] rounded-full flex items-center justify-center mx-auto mb-4 text-[var(--text-primary)]">
+                    <Lock size={20} />
+                  </div>
+                  <h3 className="text-center font-semibold text-lg mb-2">Vault is Locked</h3>
+                  <p className="text-center text-[12px] text-[var(--text-secondary)] mb-6 leading-relaxed">
+                    Enter your local passphrase to decrypt API keys and access secure settings. If this is your first time, the passphrase you enter will be set as your master key.
                   </p>
-                </div>
-                <form onSubmit={handleUnlock} className="w-full space-y-4">
                   <input
                     type="password"
                     placeholder="Enter Master Passphrase"
-                    className="w-full p-3 luxury-input rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+                    className="linear-input mb-4"
                     value={localPassphrase}
                     onChange={(e) => setLocalPassphrase(e.target.value)}
+                    autoFocus
                   />
-                  <button
-                    type="submit"
-                    className="w-full py-3 luxury-button-primary-lg transition-colors font-medium"
-                  >
-                    Unlock
+                  <button type="submit" className="linear-button-primary w-full py-2">
+                    Unlock Vault
                   </button>
                 </form>
               </div>
             ) : (
-              <div className="space-y-6">
-                {activeTab === 'keys' && (
-                  <>
-                    <div>
-                      <h3 className="font-bold mb-4">API Keys</h3>
-                      <p className="text-sm text-[var(--text-secondary)] mb-6">
-                        Keys are encrypted locally using your master passphrase
-                        and AES-GCM (PBKDF2, 210,000 iterations). They never
-                        leave your device.
-                      </p>
-
-                      <div className="space-y-4 max-h-[400px] pr-2 overflow-y-auto custom-scrollbar">
-                        {providers.map((p) => {
-                          if (p.id === 'custom') {
-                            const val = apiKeys[p.id] || '';
-                            const parts = val.split('|');
-                            const url =
-                              parts.length > 1
-                                ? parts[0]
-                                : val.includes('http')
-                                  ? val
-                                  : '';
-                            const key =
-                              parts.length > 1
-                                ? parts.slice(1).join('|')
-                                : !val.includes('http')
-                                  ? val
-                                  : '';
-                            return (
-                              <div
-                                key={p.id}
-                                className="space-y-2 pb-4 border-b border-[var(--border-subtle)]"
-                              >
-                                <label className="block text-sm font-semibold mb-1">
-                                  {p.name}
-                                </label>
-                                <input
-                                  type="text"
-                                  placeholder="Base URL (e.g. https://api.openai.com/v1)"
-                                  className="w-full p-2 rounded-lg luxury-input outline-none focus:ring-2 focus:ring-blue-500 text-sm font-mono"
-                                  value={url}
-                                  onChange={(e) =>
-                                    handleSaveKey(
-                                      p.id,
-                                      `${e.target.value}|${key}`
-                                    )
-                                  }
-                                />
-                                <input
-                                  type="password"
-                                  placeholder={`Enter ${p.name} API Key`}
-                                  className="w-full p-2 rounded-lg luxury-input outline-none focus:ring-2 focus:ring-blue-500 text-sm font-mono"
-                                  value={key}
-                                  onChange={(e) =>
-                                    handleSaveKey(
-                                      p.id,
-                                      `${url}|${e.target.value}`
-                                    )
-                                  }
-                                />
-                              </div>
-                            );
-                          }
-                          return (
-                            <div
-                              key={p.id}
-                              className="pb-4 border-b border-[var(--border-subtle)] last:border-0 last:pb-0"
-                            >
-                              <label className="block text-sm font-semibold mb-1">
-                                {p.name}
-                              </label>
-                              <input
-                                type="password"
-                                placeholder={`Enter ${p.name} API Key`}
-                                className="w-full p-2 rounded-lg luxury-input outline-none focus:ring-2 focus:ring-blue-500 text-sm font-mono"
-                                value={apiKeys[p.id] || ''}
-                                onChange={(e) =>
-                                  handleSaveKey(p.id, e.target.value)
-                                }
+              <div className="max-w-2xl mx-auto space-y-6">
+                {activeTab === 'general' && (
+                  <div className="space-y-6 animate-fade-in">
+                    <section className="space-y-4">
+                      <h3 className="text-[12px] font-semibold text-[var(--text-secondary)] uppercase tracking-wider border-b border-[var(--border-subtle)] pb-2 mb-4">Appearance</h3>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-[13px] font-medium mb-1.5">Theme</label>
+                          <select
+                            className="linear-input"
+                            value={settings.theme}
+                            onChange={(e) =>
+                              updateSettings({
+                                theme: e.target.value as 'system' | 'light' | 'dark',
+                              })
+                            }
+                          >
+                            <option value="system">System Default</option>
+                            <option value="light">Light Mode</option>
+                            <option value="dark">Dark Mode</option>
+                          </select>
+                        </div>
+                        
+                        <div>
+                          <label className="block text-[13px] font-medium mb-1.5">Accent Color</label>
+                          <div className="flex gap-2">
+                            {['#5E6AD2', '#3FB950', '#8B5CF6', '#F59E0B', '#EC4899', '#64748B'].map((color) => (
+                              <button
+                                key={color}
+                                onClick={() => updateSettings({ accentColor: color })}
+                                className={`w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 ${settings.accentColor === color ? 'border-[var(--text-primary)] scale-110' : 'border-transparent'}`}
+                                style={{ backgroundColor: color }}
+                                aria-label={`Set accent color to ${color}`}
                               />
-                            </div>
-                          );
-                        })}
+                            ))}
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </>
+
+                      <div className="grid grid-cols-2 gap-4 mt-4">
+                        <div>
+                          <label className="block text-[13px] font-medium mb-1.5">UI Density</label>
+                          <select
+                            className="linear-input"
+                            value={settings.uiDensity}
+                            onChange={(e) =>
+                              updateSettings({
+                                uiDensity: e.target.value as 'comfortable' | 'compact',
+                              })
+                            }
+                          >
+                            <option value="comfortable">Comfortable</option>
+                            <option value="compact">Compact</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-[13px] font-medium mb-1.5">Font Size</label>
+                          <select
+                            className="linear-input"
+                            value={settings.fontSize}
+                            onChange={(e) =>
+                              updateSettings({
+                                fontSize: e.target.value as 'small' | 'medium' | 'large',
+                              })
+                            }
+                          >
+                            <option value="small">Small</option>
+                            <option value="medium">Medium</option>
+                            <option value="large">Large</option>
+                          </select>
+                        </div>
+                      </div>
+                    </section>
+
+                    <section className="space-y-4">
+                      <h3 className="text-[12px] font-semibold text-[var(--text-secondary)] uppercase tracking-wider border-b border-[var(--border-subtle)] pb-2 mb-4">Chat Behavior</h3>
+                      
+                      <div>
+                        <label className="block text-[13px] font-medium mb-1.5">Enter Key Behavior</label>
+                        <select
+                          className="linear-input"
+                          value={settings.enterToSubmit ? 'send' : 'newline'}
+                          onChange={(e) =>
+                            updateSettings({ enterToSubmit: e.target.value === 'send' })
+                          }
+                        >
+                          <option value="send">Press Enter to Send (Shift+Enter for newline)</option>
+                          <option value="newline">Press Enter for Newline (Ctrl+Enter to send)</option>
+                        </select>
+                      </div>
+                    </section>
+                  </div>
                 )}
 
-                {activeTab === 'general' && (
-                  <div className="space-y-6">
-                    <div>
-                      <h3 className="font-bold mb-4">Appearance</h3>
-                      <div className="flex gap-4">
-                        {(['light', 'dark', 'system'] as const).map((t) => (
-                          <button
-                            key={t}
-                            onClick={() => updateSettings({ theme: t })}
-                            className={`px-4 py-2 rounded-lg capitalize border ${settings.theme === t ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-[var(--accent-color)] dark:text-blue-400' : 'border-[var(--border-subtle)]'}`}
-                          >
-                            {t}
-                          </button>
-                        ))}
+                {activeTab === 'keys' && (
+                  <div className="space-y-6 animate-fade-in">
+                     <div>
+                        <h3 className="text-[12px] font-semibold text-[var(--text-secondary)] uppercase tracking-wider border-b border-[var(--border-subtle)] pb-2 mb-4">API Configuration</h3>
+                        <p className="text-[12px] text-[var(--text-muted)] mb-4">
+                          API keys are encrypted locally using your master passphrase and stored securely in IndexedDB. They are only decrypted in memory when making requests.
+                        </p>
+                     </div>
+                    {providers.filter(p => p.id !== 'custom').map((p) => (
+                      <div key={p.id} className="surface-panel p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <label className="text-[13px] font-semibold">{p.name} API Key</label>
+                          {apiKeys[p.id] && (
+                            <span className="text-[10px] font-semibold uppercase tracking-wider bg-[var(--success-color)]/10 text-[var(--success-color)] border border-[var(--success-color)]/20 px-2 py-0.5 rounded">
+                              Configured
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex gap-2 relative">
+                          <input
+                            type="password"
+                            placeholder={`sk-...`}
+                            className="linear-input flex-1 font-mono text-sm pr-20"
+                            value={apiKeys[p.id] || ''}
+                            onChange={(e) => handleSaveKey(p.id, e.target.value)}
+                          />
+                        </div>
                       </div>
-                    </div>
-
-                    <div>
-                      <h3 className="font-bold mb-4">
-                        CORS Proxy Configuration
-                      </h3>
-                      <p className="text-sm text-[var(--text-secondary)] mb-4">
-                        Some AI providers (like OpenAI) block direct browser
-                        requests. You can deploy a free CORS proxy (e.g.,
-                        Cloudflare Worker) and enter its URL here to use those
-                        providers.
-                      </p>
-                      <input
-                        type="url"
-                        placeholder="e.g. https://my-proxy.workers.dev/"
-                        className="w-full p-3 rounded-lg luxury-input outline-none focus:ring-2 focus:ring-[var(--accent-color)] text-sm font-mono"
-                        value={settings.proxyUrl || ''}
-                        onChange={(e) =>
-                          updateSettings({ proxyUrl: e.target.value })
-                        }
-                      />
-                    </div>
-
-                    <div>
-                      <h3 className="font-bold mb-4">Accent Color</h3>
-                      <p className="text-sm text-[var(--text-secondary)] mb-4">
-                        Customize the primary accent color of the application.
-                      </p>
-                      <div className="flex items-center gap-4">
+                    ))}
+                    <div className="surface-panel p-4">
+                         <div className="flex items-center justify-between mb-2">
+                          <label className="text-[13px] font-semibold">Custom Endpoint (OpenAI Compatible)</label>
+                        </div>
                         <input
-                          type="color"
-                          value={settings.accentColor || '#2563eb'}
-                          onChange={(e) =>
-                            updateSettings({ accentColor: e.target.value })
-                          }
-                          className="w-12 h-12 p-1 rounded cursor-pointer luxury-input"
+                            type="text"
+                            placeholder={`https://api.example.com/v1`}
+                            className="linear-input font-mono text-sm mb-2"
+                            value={settings.customEndpointUrl || ''}
+                            onChange={(e) => updateSettings({ customEndpointUrl: e.target.value })}
                         />
-                        <button
-                          onClick={() =>
-                            updateSettings({ accentColor: '#2563eb' })
-                          }
-                          className="text-sm text-[var(--text-secondary)] hover:text-slate-700 dark:hover:text-slate-300"
-                        >
-                          Reset to Default
-                        </button>
-                      </div>
+                        <input
+                            type="password"
+                            placeholder={`Bearer Token (Optional)`}
+                            className="linear-input font-mono text-sm"
+                            value={apiKeys['custom'] || ''}
+                            onChange={(e) => handleSaveKey('custom', e.target.value)}
+                        />
                     </div>
                   </div>
                 )}
 
                 {activeTab === 'security' && (
-                  <div className="space-y-8">
-                    <div>
-                      <h3 className="font-bold mb-4 text-lg">Auto-Lock</h3>
-                      <p className="text-sm text-[var(--text-secondary)] mb-4">
-                        Automatically lock settings and require passphrase after
-                        a period of inactivity.
-                      </p>
-
-                      <div className="flex items-center justify-between p-4 border border-[var(--border-subtle)] rounded-lg">
-                        <span className="font-medium">Enable Auto-Lock</span>
-                        <label className="relative inline-flex items-center cursor-pointer">
-                          <input
-                            type="checkbox"
-                            className="sr-only peer"
-                            checked={settings.autoLockEnabled || false}
-                            onChange={(e) =>
-                              updateSettings({
-                                autoLockEnabled: e.target.checked,
-                              })
-                            }
-                          />
-                          <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-[var(--accent-color)]"></div>
-                        </label>
-                      </div>
-
-                      {settings.autoLockEnabled && (
-                        <div className="mt-4">
-                          <label className="block text-sm font-medium mb-1">
-                            Timeout (minutes)
-                          </label>
-                          <input
-                            type="number"
-                            min="1"
-                            max="60"
-                            value={settings.autoLockTimeout || 5}
-                            onChange={(e) =>
-                              updateSettings({
-                                autoLockTimeout: parseInt(e.target.value),
-                              })
-                            }
-                            className="w-24 p-2 rounded-lg luxury-input outline-none"
-                          />
+                  <div className="space-y-6 animate-fade-in">
+                    <section className="space-y-4">
+                      <h3 className="text-[12px] font-semibold text-[var(--text-secondary)] uppercase tracking-wider border-b border-[var(--border-subtle)] pb-2 mb-4">Local Encryption</h3>
+                      <div className="surface-panel p-4">
+                        <div className="flex items-start gap-3">
+                           <Shield className="text-[var(--success-color)] shrink-0 mt-0.5" size={18} />
+                           <div>
+                               <h4 className="font-semibold text-[13px] mb-1">AES-GCM Encryption Active</h4>
+                               <p className="text-[12px] text-[var(--text-secondary)] leading-relaxed">
+                                  Your sensitive credentials and API keys are currently encrypted in your local browser storage using industry-standard AES-GCM encryption. OmniChat has zero backend and telemetry.
+                               </p>
+                           </div>
                         </div>
-                      )}
-                    </div>
-
-                    <div className="pt-6 border-t border-[var(--border-subtle)]">
-                      <h3 className="font-bold mb-4 text-red-500 flex items-center gap-2">
-                        <Trash2 size={18} /> Danger Zone
-                      </h3>
-                      <p className="text-sm text-[var(--text-secondary)] mb-4">
-                        Permanently delete all API keys, conversations, prompts,
-                        and settings.
-                      </p>
-                      <button
-                        onClick={handleClearData}
-                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium"
-                      >
-                        Purge All Local Data
-                      </button>
-                    </div>
+                      </div>
+                    </section>
                   </div>
                 )}
 
                 {activeTab === 'analytics' && (
-                  <React.Suspense
-                    fallback={
-                      <div className="p-8 text-center text-[var(--text-secondary)]">
-                        Loading Analytics...
-                      </div>
-                    }
-                  >
-                    <Analytics />
-                  </React.Suspense>
+                  <div className="space-y-4 animate-fade-in">
+                      <Analytics />
+                  </div>
                 )}
 
                 {activeTab === 'data' && (
-                  <div className="space-y-6">
-                    <div>
-                      <h3 className="font-bold mb-4 text-lg">
-                        Backup & Restore
-                      </h3>
-                      <p className="text-sm text-[var(--text-secondary)] mb-6">
-                        Export your conversations and prompts to a JSON file, or
-                        restore from a previous backup. API keys are <b>not</b>{' '}
-                        exported.
-                      </p>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="border border-[var(--border-subtle)] p-6 rounded-xl flex flex-col items-center text-center">
-                          <div className="p-3 bg-blue-50 dark:bg-blue-900/30 text-[var(--accent-color)] dark:text-blue-400 rounded-full mb-3">
-                            <Download size={24} />
-                          </div>
-                          <h4 className="font-bold mb-1">Export Data</h4>
-                          <p className="text-xs text-[var(--text-secondary)] mb-4">
-                            Save all data to a local file.
-                          </p>
-                          <button
-                            onClick={handleExport}
-                            className="w-full py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg font-medium transition-colors"
-                          >
-                            Export JSON
-                          </button>
-                        </div>
-
-                        <div className="border border-[var(--border-subtle)] p-6 rounded-xl flex flex-col items-center text-center">
-                          <div className="p-3 bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-full mb-3">
-                            <Upload size={24} />
-                          </div>
-                          <h4 className="font-bold mb-1">Import Data</h4>
-                          <p className="text-xs text-[var(--text-secondary)] mb-4">
-                            Restore from a JSON backup file.
-                          </p>
-                          <label className="w-full py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg font-medium transition-colors cursor-pointer">
-                            Import JSON
-                            <input
-                              type="file"
-                              accept=".json"
-                              className="hidden"
-                              onChange={handleImport}
-                            />
-                          </label>
-                        </div>
+                  <div className="space-y-6 animate-fade-in">
+                    <section className="space-y-4">
+                      <h3 className="text-[12px] font-semibold text-[var(--text-secondary)] uppercase tracking-wider border-b border-[var(--border-subtle)] pb-2 mb-4">Backup & Restore</h3>
+                      <div className="flex gap-4">
+                        <button
+                          onClick={handleExport}
+                          className="flex-1 flex items-center justify-center gap-2 p-3 surface-panel hover:bg-[var(--bg-surface-hover)] transition-colors text-[13px] font-medium"
+                        >
+                          <Download size={16} className="text-[var(--accent-color)]" />
+                          Export Encrypted Backup
+                        </button>
+                        <label className="flex-1 flex items-center justify-center gap-2 p-3 surface-panel hover:bg-[var(--bg-surface-hover)] transition-colors cursor-pointer text-[13px] font-medium">
+                          <Upload size={16} className="text-[var(--accent-color)]" />
+                          Import Backup
+                          <input
+                            type="file"
+                            accept=".json"
+                            className="hidden"
+                            onChange={handleImport}
+                          />
+                        </label>
                       </div>
-                    </div>
+                    </section>
+
+                    <section className="space-y-4 mt-8">
+                      <h3 className="text-[12px] font-semibold text-[var(--error-color)] uppercase tracking-wider border-b border-[var(--border-subtle)] pb-2 mb-4">Danger Zone</h3>
+                      <div className="surface-panel border-[var(--error-color)]/30 bg-[var(--error-color)]/5 p-4 flex items-center justify-between">
+                        <div>
+                          <div className="font-semibold text-[13px] text-[var(--error-color)] mb-1">Factory Reset</div>
+                          <div className="text-[12px] text-[var(--text-secondary)]">
+                            Permanently delete all data, keys, and settings from this device.
+                          </div>
+                        </div>
+                        <button
+                          onClick={handleClearData}
+                          className="px-4 py-2 bg-[var(--error-color)] text-white rounded-md text-[13px] font-semibold hover:bg-red-600 transition-colors shadow-sm"
+                        >
+                          Wipe Data
+                        </button>
+                      </div>
+                    </section>
                   </div>
                 )}
               </div>

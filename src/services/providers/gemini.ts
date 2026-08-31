@@ -1,5 +1,47 @@
-import { ProviderAdapter, handleProviderError } from './base';
+import { ProviderAdapter, handleProviderError, ProviderParameters } from './base';
 import { Message, ProviderModel } from '../../types';
+
+interface GeminiContentPart {
+  text?: string;
+  [key: string]: unknown;
+}
+
+interface GeminiContent {
+  role: 'user' | 'model';
+  parts: GeminiContentPart[];
+}
+
+interface GeminiCandidate {
+  content?: {
+    parts?: GeminiContentPart[];
+    role?: string;
+  };
+  finishReason?: string;
+}
+
+interface GeminiUsageMetadata {
+  promptTokenCount?: number;
+  candidatesTokenCount?: number;
+  totalTokenCount?: number;
+}
+
+interface GeminiStreamChunk {
+  candidates?: GeminiCandidate[];
+  usageMetadata?: GeminiUsageMetadata;
+}
+
+interface GeminiPayload {
+  contents: GeminiContent[];
+  systemInstruction?: {
+    parts: Array<{ text: string }>;
+  };
+  generationConfig?: {
+    temperature?: number;
+    topP?: number;
+    maxOutputTokens?: number;
+    thinkingConfig?: { thinkingLevel: string };
+  };
+}
 
 export class GeminiAdapter implements ProviderAdapter {
   id = 'gemini';
@@ -33,19 +75,20 @@ export class GeminiAdapter implements ProviderAdapter {
     signal?: AbortSignal,
     proxyUrl?: string,
     systemPrompt?: string,
-    parameters?: any,
+    parameters?: ProviderParameters,
     onUsage?: (usage: { prompt: number; completion: number }) => void
   ): Promise<void> {
     const resolvedModel = this.resolveModelId(model);
 
     // Sanitize and ensure consecutive alternating roles for Gemini API
-    const sanitizedContents: Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }> = [];
+    const sanitizedContents: GeminiContent[] = [];
     for (const m of messages) {
       const text = m.content?.trim();
       if (!text && m.role === 'user') continue;
-      const role = m.role === 'assistant' ? 'model' : 'user';
+      const role: 'user' | 'model' = m.role === 'assistant' ? 'model' : 'user';
       if (sanitizedContents.length > 0 && sanitizedContents[sanitizedContents.length - 1].role === role) {
-        sanitizedContents[sanitizedContents.length - 1].parts[0].text += `\n\n${text || ''}`;
+        const lastPart = sanitizedContents[sanitizedContents.length - 1].parts[0];
+        lastPart.text = (lastPart.text || '') + `\n\n${text || ''}`;
       } else {
         sanitizedContents.push({
           role,
@@ -61,7 +104,7 @@ export class GeminiAdapter implements ProviderAdapter {
       sanitizedContents.unshift({ role: 'user', parts: [{ text: 'Hello' }] });
     }
 
-    const payload: any = { contents: sanitizedContents };
+    const payload: GeminiPayload = { contents: sanitizedContents };
     
     if (systemPrompt && systemPrompt.trim()) {
       payload.systemInstruction = {
@@ -69,7 +112,7 @@ export class GeminiAdapter implements ProviderAdapter {
       };
     }
     
-    const genConfig: any = {};
+    const genConfig: NonNullable<GeminiPayload['generationConfig']> = {};
     if (parameters) {
       if (parameters.temperature !== undefined && !resolvedModel.includes('preview')) {
         genConfig.temperature = parameters.temperature;
@@ -98,7 +141,7 @@ export class GeminiAdapter implements ProviderAdapter {
       fetchUrl = `${proxyUrl}${separator}target=${targetUrl}`;
     }
 
-    let response;
+    let response: Response;
     try {
       response = await fetch(fetchUrl, {
         method: 'POST',
@@ -109,7 +152,7 @@ export class GeminiAdapter implements ProviderAdapter {
         body: JSON.stringify(payload),
         signal
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       throw handleProviderError(err, this.name);
     }
 
@@ -139,7 +182,7 @@ export class GeminiAdapter implements ProviderAdapter {
           try {
             const data = trimmed.slice(6).trim();
             if (data === '[DONE]') continue;
-            const parsed = JSON.parse(data);
+            const parsed = JSON.parse(data) as GeminiStreamChunk;
             
             if (parsed.usageMetadata) {
               promptTokens = parsed.usageMetadata.promptTokenCount || 0;
@@ -148,8 +191,8 @@ export class GeminiAdapter implements ProviderAdapter {
             
             const chunkText = this.parseResponseStream(parsed);
             if (chunkText) onUpdate(chunkText);
-          } catch (e) {
-            console.warn("Parse error for Gemini chunk", trimmed);
+          } catch {
+            // Silently ignore partial non-JSON stream fragments
           }
         }
       }
@@ -160,10 +203,11 @@ export class GeminiAdapter implements ProviderAdapter {
     }
   }
 
-  parseResponseStream(chunk: any): string {
-    const parts = chunk?.candidates?.[0]?.content?.parts;
+  parseResponseStream(chunk: GeminiStreamChunk | unknown): string {
+    const geminiChunk = chunk as GeminiStreamChunk;
+    const parts = geminiChunk?.candidates?.[0]?.content?.parts;
     if (Array.isArray(parts)) {
-      return parts.map((p: any) => p.text || '').join('');
+      return parts.map((p) => p.text || '').join('');
     }
     return '';
   }

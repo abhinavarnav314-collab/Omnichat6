@@ -1,5 +1,41 @@
 import { Message, ProviderModel } from '../../types';
 
+export interface ProviderParameters {
+  temperature?: number;
+  max_tokens?: number;
+  top_p?: number;
+  frequency_penalty?: number;
+  presence_penalty?: number;
+  [key: string]: unknown;
+}
+
+export interface StreamDelta {
+  content?: string;
+  role?: string;
+  [key: string]: unknown;
+}
+
+export interface StreamChoice {
+  index?: number;
+  delta?: StreamDelta;
+  finish_reason?: string | null;
+  [key: string]: unknown;
+}
+
+export interface StreamUsage {
+  prompt_tokens?: number;
+  completion_tokens?: number;
+  total_tokens?: number;
+  [key: string]: unknown;
+}
+
+export interface StreamChunkPayload {
+  id?: string;
+  choices?: StreamChoice[];
+  usage?: StreamUsage;
+  [key: string]: unknown;
+}
+
 export interface ProviderAdapter {
   id: string;
   name: string;
@@ -12,15 +48,15 @@ export interface ProviderAdapter {
     signal?: AbortSignal,
     proxyUrl?: string,
     systemPrompt?: string,
-    parameters?: any,
+    parameters?: ProviderParameters,
     onUsage?: (usage: { prompt: number; completion: number }) => void,
     overrideBaseUrl?: string
   ) => Promise<void>;
-  parseResponseStream: (chunk: string) => string;
+  parseResponseStream: (chunk: StreamChunkPayload | unknown) => string;
 }
 
-export function handleProviderError(error: any, providerName: string, status?: number): Error {
-  const errMsg = error?.message?.toLowerCase() || '';
+export function handleProviderError(error: unknown, providerName: string, status?: number): Error {
+  const errMsg = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
   
   if (status) {
     if (status === 401 || status === 403) return new Error("Invalid API key.");
@@ -54,7 +90,7 @@ export abstract class OpenAICompatibleAdapter implements ProviderAdapter {
     signal?: AbortSignal,
     proxyUrl?: string,
     systemPrompt?: string,
-    parameters?: any,
+    parameters?: ProviderParameters,
     onUsage?: (usage: { prompt: number; completion: number }) => void,
     overrideBaseUrl?: string
   ): Promise<void> {
@@ -63,7 +99,7 @@ export abstract class OpenAICompatibleAdapter implements ProviderAdapter {
       formattedMessages.unshift({ role: 'system', content: systemPrompt });
     }
 
-    const payload: any = {
+    const payload: Record<string, unknown> = {
       model,
       messages: formattedMessages,
       stream: true,
@@ -94,16 +130,16 @@ export abstract class OpenAICompatibleAdapter implements ProviderAdapter {
       }
     }
 
-    let response;
+    let response: Response;
     try {
-        response = await fetch(fetchUrl, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify(payload),
-          signal
-        });
-    } catch (err: any) {
-        throw handleProviderError(err, this.name);
+      response = await fetch(fetchUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload),
+        signal
+      });
+    } catch (err: unknown) {
+      throw handleProviderError(err, this.name);
     }
 
     if (!response.ok) {
@@ -111,7 +147,7 @@ export abstract class OpenAICompatibleAdapter implements ProviderAdapter {
       throw handleProviderError(new Error(`API Error: ${response.status} ${errText}`), this.name, response.status);
     }
 
-    if (!response.body) throw new Error("No response body");
+    if (!response.body) throw new Error("No response body received from provider.");
     const reader = response.body.getReader();
     const decoder = new TextDecoder('utf-8');
     let buffer = '';
@@ -131,28 +167,29 @@ export abstract class OpenAICompatibleAdapter implements ProviderAdapter {
           try {
             const data = trimmed.slice(6).trim();
             if (data === '[DONE]') continue;
-            const parsed = JSON.parse(data);
+            const parsed = JSON.parse(data) as StreamChunkPayload;
             
             if (parsed.usage) {
-                promptTokens = parsed.usage.prompt_tokens || 0;
-                completionTokens = parsed.usage.completion_tokens || 0;
+              promptTokens = parsed.usage.prompt_tokens || 0;
+              completionTokens = parsed.usage.completion_tokens || 0;
             }
 
             const chunkText = this.parseResponseStream(parsed);
             if (chunkText) onUpdate(chunkText);
-          } catch (e) {
-            console.warn("Parse error for chunk", trimmed);
+          } catch {
+            // Silently ignore partial non-JSON stream fragments
           }
         }
       }
     }
     
     if (onUsage && (promptTokens > 0 || completionTokens > 0)) {
-        onUsage({ prompt: promptTokens, completion: completionTokens });
+      onUsage({ prompt: promptTokens, completion: completionTokens });
     }
   }
 
-  parseResponseStream(parsedChunk: any): string {
-    return parsedChunk?.choices?.[0]?.delta?.content || '';
+  parseResponseStream(parsedChunk: StreamChunkPayload | unknown): string {
+    const chunk = parsedChunk as StreamChunkPayload;
+    return chunk?.choices?.[0]?.delta?.content || '';
   }
 }

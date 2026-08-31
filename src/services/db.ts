@@ -7,6 +7,12 @@ import {
   PromptFolder,
   PromptVersion,
   PromptChain,
+  ContextBlock,
+  ScheduledTask,
+  AppWorkflow,
+  CustomApp,
+  PrivacyNote,
+  TaskResult,
 } from '../types';
 
 interface OmniChatDB extends DBSchema {
@@ -46,13 +52,38 @@ interface OmniChatDB extends DBSchema {
     value: any;
     indexes: { appId: string, timestamp: number };
   };
+  contextBlocks: {
+    key: string;
+    value: ContextBlock;
+  };
+  tasks: {
+    key: string;
+    value: ScheduledTask;
+  };
+  taskResults: {
+    key: string;
+    value: TaskResult;
+    indexes: { taskId: string };
+  };
+  workflows: {
+    key: string;
+    value: AppWorkflow;
+  };
+  customApps: {
+    key: string;
+    value: CustomApp;
+  };
+  privacyVault: {
+    key: string;
+    value: PrivacyNote;
+  };
 }
 
 let dbPromise: Promise<IDBPDatabase<OmniChatDB>> | null = null;
 
 export async function getDB() {
   if (!dbPromise) {
-    dbPromise = openDB<OmniChatDB>('omniChat-db', 4, {
+    dbPromise = openDB<OmniChatDB>('omniChat-db', 5, {
       upgrade(db, oldVersion, newVersion, transaction) {
         if (oldVersion < 1) {
           const cStore = db.createObjectStore('conversations', {
@@ -91,6 +122,27 @@ export async function getDB() {
             const sStore = db.createObjectStore('appSessions', { keyPath: 'id' });
             sStore.createIndex('appId', 'appId');
             sStore.createIndex('timestamp', 'timestamp');
+          }
+        }
+        if (oldVersion < 5) {
+          if (!db.objectStoreNames.contains('contextBlocks')) {
+            db.createObjectStore('contextBlocks', { keyPath: 'id' });
+          }
+          if (!db.objectStoreNames.contains('tasks')) {
+            db.createObjectStore('tasks', { keyPath: 'id' });
+          }
+          if (!db.objectStoreNames.contains('taskResults')) {
+            const trStore = db.createObjectStore('taskResults', { keyPath: 'id' });
+            trStore.createIndex('taskId', 'taskId');
+          }
+          if (!db.objectStoreNames.contains('workflows')) {
+            db.createObjectStore('workflows', { keyPath: 'id' });
+          }
+          if (!db.objectStoreNames.contains('customApps')) {
+            db.createObjectStore('customApps', { keyPath: 'id' });
+          }
+          if (!db.objectStoreNames.contains('privacyVault')) {
+            db.createObjectStore('privacyVault', { keyPath: 'id' });
           }
         }
       },
@@ -239,3 +291,106 @@ export async function getABTests(): Promise<any[]> {
   const db = await getDB();
   return db.getAll('abTests');
 }
+
+export async function exportAllData(): Promise<Record<string, any[]>> {
+  const db = await getDB();
+  const stores = ['conversations', 'prompts', 'promptFolders', 'promptVersions', 'promptChains', 'appSessions', 'abTests', 'contextBlocks', 'tasks', 'taskResults', 'workflows', 'customApps', 'privacyVault'] as const;
+  const backup: Record<string, any[]> = {};
+  for (const store of stores) {
+    if (db.objectStoreNames.contains(store)) {
+      backup[store] = await db.getAll(store);
+    }
+  }
+  return backup;
+}
+
+export async function importAllData(data: Record<string, any[]>): Promise<void> {
+  const db = await getDB();
+  for (const [storeName, items] of Object.entries(data)) {
+    if (db.objectStoreNames.contains(storeName as any) && Array.isArray(items)) {
+      for (const item of items) {
+        await db.put(storeName as any, item);
+      }
+    }
+  }
+}
+
+// --- NEW STORES CRUD ---
+
+export async function getContextBlocks(): Promise<ContextBlock[]> {
+  const db = await getDB();
+  return db.getAll('contextBlocks');
+}
+export async function saveContextBlock(block: ContextBlock) {
+  const db = await getDB();
+  await db.put('contextBlocks', block);
+}
+export async function deleteContextBlock(id: string) {
+  const db = await getDB();
+  await db.delete('contextBlocks', id);
+}
+
+export async function getTasks(): Promise<ScheduledTask[]> {
+  const db = await getDB();
+  return db.getAll('tasks');
+}
+export async function saveTask(task: ScheduledTask) {
+  const db = await getDB();
+  await db.put('tasks', task);
+}
+export async function deleteTask(id: string) {
+  const db = await getDB();
+  await db.delete('tasks', id);
+}
+
+export async function getTaskResults(taskId?: string): Promise<TaskResult[]> {
+  const db = await getDB();
+  if (taskId) {
+    return db.getAllFromIndex('taskResults', 'taskId', taskId);
+  }
+  return db.getAll('taskResults');
+}
+export async function saveTaskResult(result: TaskResult) {
+  const db = await getDB();
+  await db.put('taskResults', result);
+}
+
+export async function getWorkflows(): Promise<AppWorkflow[]> {
+  const db = await getDB();
+  return db.getAll('workflows');
+}
+export async function saveWorkflow(workflow: AppWorkflow) {
+  const db = await getDB();
+  await db.put('workflows', workflow);
+}
+export async function deleteWorkflow(id: string) {
+  const db = await getDB();
+  await db.delete('workflows', id);
+}
+
+export async function getCustomApps(): Promise<CustomApp[]> {
+  const db = await getDB();
+  return db.getAll('customApps');
+}
+export async function saveCustomApp(app: CustomApp) {
+  const db = await getDB();
+  await db.put('customApps', app);
+}
+export async function deleteCustomApp(id: string) {
+  const db = await getDB();
+  await db.delete('customApps', id);
+}
+
+export async function getPrivacyNotes(): Promise<PrivacyNote[]> {
+  const db = await getDB();
+  return db.getAll('privacyVault');
+}
+export async function savePrivacyNote(note: PrivacyNote) {
+  const db = await getDB();
+  await db.put('privacyVault', note);
+}
+export async function deletePrivacyNote(id: string) {
+  const db = await getDB();
+  await db.delete('privacyVault', id);
+}
+
