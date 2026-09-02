@@ -1,56 +1,29 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Maximize2 } from 'lucide-react';
+import { ArrowLeft, Maximize2, Play, Loader2, Sparkles, Copy, Check } from 'lucide-react';
 import { useChatStore } from '../../store/useChatStore';
 import { useAppStore } from '../../store/useAppStore';
 import { sendMessageService } from '../../services/chatService';
+import SafeMarkdown from '../SafeMarkdown';
 
 export default function CustomAppRunner({ app, onBack }: { app: any, onBack: () => void }) {
   const [inputs, setInputs] = useState<Record<string, string>>({});
   const [output, setOutput] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
-  const { createConversation, conversations, activeId } = useChatStore();
+  const [copied, setCopied] = useState(false);
+  const { createConversation } = useChatStore();
   const { setCurrentView } = useAppStore();
 
-  const handleRun = async () => {
-    setIsGenerating(true);
-    try {
-      let finalPrompt = app.promptTemplate;
-      app.fields.forEach((f: any) => {
-        const val = inputs[f.name] || '';
-        finalPrompt = finalPrompt.replace(new RegExp(`{{${f.name}}}`, 'g'), val);
-      });
-
-      createConversation();
-      // Wait a moment for store to update
-      setTimeout(async () => {
-        try {
-          const state = useChatStore.getState();
-          const convoId = state.activeId;
-          const c = state.conversations.find(c => c.id === convoId);
-          if (c) {
-             // Let's just navigate to chat and send message there
-             sendMessageService(c.id, finalPrompt, c.currentLeafId);
-             setCurrentView('chat');
-          }
-        } catch(e) {
-          console.error('Error starting conversation', e);
-        }
-      }, 100);
-      
-    } catch(e) {
-      console.error(e);
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  const handleSendToChat = async () => {
-    let finalPrompt = app.promptTemplate;
-    app.fields.forEach((f: any) => {
+  const buildPrompt = () => {
+    let finalPrompt = app.promptTemplate || '';
+    (app.fields || []).forEach((f: any) => {
       const val = inputs[f.name] || '';
       finalPrompt = finalPrompt.replace(new RegExp(`{{${f.name}}}`, 'g'), val);
     });
+    return finalPrompt;
+  };
 
+  const handleSendToChat = async () => {
+    const finalPrompt = buildPrompt();
     createConversation();
     setTimeout(() => {
       const state = useChatStore.getState();
@@ -63,6 +36,12 @@ export default function CustomAppRunner({ app, onBack }: { app: any, onBack: () 
     }, 100);
   };
 
+  const handleCopyOutput = () => {
+    if (!output) return;
+    navigator.clipboard.writeText(output);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <div className="flex flex-col h-full w-full bg-[var(--bg-base)] overflow-y-auto">
@@ -71,34 +50,38 @@ export default function CustomAppRunner({ app, onBack }: { app: any, onBack: () 
           <button onClick={onBack} className="icon-button" title="Back">
             <ArrowLeft size={16} />
           </button>
-          <h1 className="font-semibold text-[15px]">{app.name}</h1>
+          <div>
+            <h1 className="font-semibold text-[15px]">{app.name}</h1>
+            <p className="text-[12px] text-[var(--text-secondary)]">{app.description}</p>
+          </div>
         </div>
         <div className="flex gap-2">
           <button 
             onClick={handleSendToChat}
-            className="flex items-center gap-2 bg-[var(--accent-color)] text-white px-4 py-1.5 rounded-md font-medium text-[13px]"
+            className="linear-button-primary text-[13px]"
           >
-            <Maximize2 size={14} /> Run in Chat Window
+            <Maximize2 size={14} /> Open in Chat
           </button>
         </div>
       </div>
 
       <div className="flex-1 p-6 md:p-8 max-w-4xl mx-auto w-full flex flex-col gap-6 animate-fade-in">
-        <p className="text-[14px] text-[var(--text-secondary)]">{app.description}</p>
-        
         <div className="surface-panel p-6">
-          <h2 className="text-[14px] font-semibold mb-4 text-[var(--text-primary)]">Inputs</h2>
+          <h2 className="text-[14px] font-semibold mb-4 text-[var(--text-primary)] flex items-center gap-2">
+            <Sparkles size={16} className="text-[var(--accent-color)]" /> App Parameters
+          </h2>
           <div className="flex flex-col gap-4">
-            {app.fields.map((f: any) => (
+            {(app.fields || []).map((f: any) => (
               <div key={f.name}>
                 <label className="block text-[12px] font-bold tracking-wider text-[var(--text-muted)] mb-1 uppercase">
-                  {f.name} {f.required && '*'}
+                  {f.name} {f.required && <span className="text-[var(--error-color)]">*</span>}
                 </label>
                 {f.description && <p className="text-[11px] text-[var(--text-secondary)] mb-2">{f.description}</p>}
                 {f.type === 'textarea' ? (
                   <textarea 
                     value={inputs[f.name] || ''}
                     onChange={e => setInputs({...inputs, [f.name]: e.target.value})}
+                    placeholder={`Enter ${f.name}...`}
                     className="w-full bg-[var(--bg-base)] border border-[var(--border-subtle)] rounded-md px-3 py-2 text-[14px] h-32 resize-y outline-none focus:border-[var(--accent-color)]"
                   />
                 ) : (
@@ -106,13 +89,41 @@ export default function CustomAppRunner({ app, onBack }: { app: any, onBack: () 
                     type="text"
                     value={inputs[f.name] || ''}
                     onChange={e => setInputs({...inputs, [f.name]: e.target.value})}
+                    placeholder={`Enter ${f.name}...`}
                     className="w-full bg-[var(--bg-base)] border border-[var(--border-subtle)] rounded-md px-3 py-2 text-[14px] outline-none focus:border-[var(--accent-color)]"
                   />
                 )}
               </div>
             ))}
           </div>
+
+          <div className="mt-6 flex justify-end gap-3">
+            <button
+              onClick={handleSendToChat}
+              className="linear-button-primary text-[13px]"
+            >
+              <Play size={14} /> Run Workflow
+            </button>
+          </div>
         </div>
+
+        {output && (
+          <div className="surface-panel p-6">
+            <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3 mb-4">
+              <h3 className="font-semibold text-[14px]">Generated Result</h3>
+              <button 
+                onClick={handleCopyOutput}
+                className="linear-button-secondary text-[12px] py-1 px-2.5"
+              >
+                {copied ? <Check size={12} className="text-[var(--success-color)]" /> : <Copy size={12} />}
+                {copied ? 'Copied' : 'Copy'}
+              </button>
+            </div>
+            <div className="prose prose-sm dark:prose-invert max-w-none">
+              <SafeMarkdown>{output}</SafeMarkdown>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

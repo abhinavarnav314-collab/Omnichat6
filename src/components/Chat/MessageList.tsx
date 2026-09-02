@@ -2,9 +2,12 @@ import React, { useMemo, useRef, useEffect, lazy, Suspense } from 'react';
 import { Conversation, Message } from '../../types';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
 import { User, Bot, RefreshCw, Check, Copy } from 'lucide-react';
 import VirtualMessageList from './VirtualMessageList';
 import BranchNavigator from './BranchNavigator';
+import { preprocessMath } from '../../utils/mathFormatter';
 
 const SyntaxHighlighter = lazy(() => import('react-syntax-highlighter').then(module => ({ default: module.Prism })));
 
@@ -111,9 +114,11 @@ export default function MessageList({ conversation, isComparison, onResend }: Me
   }, [activeMessages.length, conversation.messages.length]);
 
     const renderContent = (content: string) => {
+      const processed = preprocessMath(content || '');
       return (
         <Markdown
-          remarkPlugins={[remarkGfm]}
+          remarkPlugins={[remarkGfm, remarkMath]}
+          rehypePlugins={[[rehypeKatex, { strict: false, throwOnError: false }]]}
           components={{
             a: ({ node, href, children, ...props }) => {
                 let isSafe = false;
@@ -128,10 +133,27 @@ export default function MessageList({ conversation, isComparison, onResend }: Me
                 }
                 return <a href={href} target="_blank" rel="noopener noreferrer" className="text-[var(--accent-color)] hover:underline" {...props}>{children}</a>;
             },
-            code: CodeBlock
+            code: CodeBlock,
+            table: ({ children, ...props }) => (
+              <div className="overflow-x-auto my-3 border border-[var(--border-subtle)] rounded-lg">
+                <table className="w-full text-left text-sm border-collapse" {...props}>
+                  {children}
+                </table>
+              </div>
+            ),
+            th: ({ children, ...props }) => (
+              <th className="bg-[var(--bg-surface-hover)] px-3 py-2 font-semibold text-[var(--text-primary)] border-b border-[var(--border-subtle)]" {...props}>
+                {children}
+              </th>
+            ),
+            td: ({ children, ...props }) => (
+              <td className="px-3 py-2 border-b border-[var(--border-subtle)] text-[var(--text-secondary)]" {...props}>
+                {children}
+              </td>
+            )
         }}
       >
-        {content}
+        {processed}
       </Markdown>
     );
   };
@@ -183,8 +205,8 @@ export default function MessageList({ conversation, isComparison, onResend }: Me
                                       <RefreshCw size={12} />
                                   </button>
                               </div>
-                              <div className="prose prose-sm dark:prose-invert prose-p:leading-relaxed prose-pre:p-0">
-                                  {turn.user.content}
+                              <div className="prose prose-sm dark:prose-invert prose-p:leading-relaxed prose-pre:p-0 text-white">
+                                  {renderContent(turn.user.content)}
                               </div>
                           </div>
                       </div>
@@ -260,8 +282,8 @@ export default function MessageList({ conversation, isComparison, onResend }: Me
                   </>
                 )}
               </div>
-              <div className="prose prose-sm dark:prose-invert prose-p:leading-relaxed prose-pre:p-0 max-w-none text-[14px]">
-                {isUser ? msg.content : renderContent(msg.content)}
+              <div className={`prose prose-sm dark:prose-invert prose-p:leading-relaxed prose-pre:p-0 max-w-none text-[14px] ${isUser ? 'text-white' : ''}`}>
+                {renderContent(msg.content)}
               </div>
               {!isUser && renderMessageStats(msg)}
             </div>
