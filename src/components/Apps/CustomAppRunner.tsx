@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Maximize2, Play, Loader2, Sparkles, Copy, Check } from 'lucide-react';
+import { ArrowLeft, Maximize2, Play, Loader2, Sparkles, Copy, Check, Printer } from 'lucide-react';
 import { useChatStore } from '../../store/useChatStore';
 import { useAppStore } from '../../store/useAppStore';
 import { sendMessageService } from '../../services/chatService';
@@ -41,6 +41,10 @@ export default function CustomAppRunner({ app, onBack }: { app: any, onBack: () 
     navigator.clipboard.writeText(output);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handlePrint = () => {
+    window.print();
   };
 
   return (
@@ -108,16 +112,24 @@ export default function CustomAppRunner({ app, onBack }: { app: any, onBack: () 
         </div>
 
         {output && (
-          <div className="surface-panel p-6">
-            <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3 mb-4">
+          <div className="surface-panel p-6 print-area">
+            <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3 mb-4 no-print">
               <h3 className="font-semibold text-[14px]">Generated Result</h3>
-              <button 
-                onClick={handleCopyOutput}
-                className="linear-button-secondary text-[12px] py-1 px-2.5"
-              >
-                {copied ? <Check size={12} className="text-[var(--success-color)]" /> : <Copy size={12} />}
-                {copied ? 'Copied' : 'Copy'}
-              </button>
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={handlePrint}
+                  className="linear-button-secondary text-[12px] py-1 px-2.5"
+                >
+                  <Printer size={12} /> Print / PDF (Pro)
+                </button>
+                <button 
+                  onClick={handleCopyOutput}
+                  className="linear-button-secondary text-[12px] py-1 px-2.5"
+                >
+                  {copied ? <Check size={12} className="text-[var(--success-color)]" /> : <Copy size={12} />}
+                  {copied ? 'Copied' : 'Copy'}
+                </button>
+              </div>
             </div>
             <div className="prose prose-sm dark:prose-invert max-w-none">
               <SafeMarkdown>{output}</SafeMarkdown>

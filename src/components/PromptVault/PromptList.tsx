@@ -137,6 +137,10 @@ export default function PromptList() {
       p.tags?.some(t => t.toLowerCase().includes(search.toLowerCase()))
   );
 
+  const handleCreateNew = () => {
+    setIsCreating(true);
+  };
+
   const handleCreateChain = () => {
     const selectedPrompts = window.prompt("Enter comma-separated prompt IDs to chain (In a real app this would be a selection UI):");
     if (!selectedPrompts) return;
@@ -151,7 +155,7 @@ export default function PromptList() {
         <div className="flex items-center justify-between">
           <h2 className="font-semibold text-[13px] tracking-wider uppercase text-[var(--text-muted)]">Prompt Vault</h2>
           <div className="flex items-center gap-0.5">
-              <button onClick={() => setIsCreating(true)} className="icon-button" title="New Prompt"><Plus size={14} /></button>
+              <button onClick={handleCreateNew} className="icon-button" title="New Prompt"><Plus size={14} /></button>
               <button onClick={() => {
                   const name = prompt("Folder Name:");
                   if(name) addFolder(name);

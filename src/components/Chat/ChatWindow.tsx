@@ -4,7 +4,7 @@ import { useAppStore } from '../../store/useAppStore';
 import MessageList from './MessageList';
 import MessageInput from './MessageInput';
 import ModelSelector from './ModelSelector';
-import { Columns, PieChart, ChevronRight, BookOpen, MessageSquare, Download } from 'lucide-react';
+import { Columns, PieChart, ChevronRight, BookOpen, MessageSquare, Download, Printer } from 'lucide-react';
 import { sendMessageService } from '../../services/chatService';
 import ConversationInsights from './ConversationInsights';
 import { useToast } from '../Shared/Toast';
@@ -85,6 +85,10 @@ export default function ChatWindow() {
     success('Chat exported to JSON.');
   };
 
+  const handlePrint = () => {
+    window.print();
+  };
+
   return (
     <div className="flex-1 flex flex-col h-full w-full bg-[var(--bg-base)] overflow-hidden relative">
       {/* Header bar */}
@@ -128,6 +132,14 @@ export default function ChatWindow() {
           >
             <Download size={16} />
           </button>
+          
+          <button 
+            onClick={handlePrint}
+            className="icon-button"
+            title="Print / Export PDF (Pro)"
+          >
+            <Printer size={16} />
+          </button>
 
           <button 
             onClick={togglePromptVault}
@@ -148,9 +160,9 @@ export default function ChatWindow() {
       </div>
 
       {/* Main chat messages & input container */}
-      <div className="flex-1 flex min-h-0 overflow-hidden relative">
-        <div className="flex-1 flex flex-col min-h-0 overflow-hidden relative max-w-[800px] mx-auto w-full border-x border-[var(--border-subtle)] bg-[var(--bg-surface)] shadow-sm">
-          <div className="flex-1 min-h-0 overflow-y-auto relative p-4">
+      <div className="flex-1 flex min-h-0 overflow-hidden relative print-area">
+        <div className="flex-1 flex flex-col min-h-0 overflow-hidden relative max-w-[800px] mx-auto w-full border-x border-[var(--border-subtle)] bg-[var(--bg-surface)] shadow-sm print-area">
+          <div className="flex-1 min-h-0 overflow-y-auto relative p-4 print-area">
             <MessageList 
               conversation={activeConvo} 
               isComparison={activeConvo.isComparison} 

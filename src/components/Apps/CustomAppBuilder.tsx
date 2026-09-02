@@ -27,6 +27,7 @@ export default function CustomAppBuilder({ onBack }: { onBack: () => void }) {
 
   const handleSave = async () => {
     if (!name.trim()) return;
+    
     await addCustomApp({
       name,
       description,
