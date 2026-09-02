@@ -10,9 +10,10 @@ export default function ApiKeyManager() {
   const providers = getProviders();
   const { passphrase, settings, updateSettings } = useAppStore();
   const { success, error: toastError, info } = useToast();
+  
   const [keys, setKeys] = useState<Record<string, string>>({});
   const [show, setShow] = useState<Record<string, boolean>>({});
-  const [health, setHealth] = useState<Record<string, 'checking' | 'ok' | 'error'>>({});
+  const [health, setHealth] = useState<Record<string, { status: 'checking' | 'ok' | 'error' | 'idle', latency?: number, message?: string }>>({});
 
   React.useEffect(() => {
     const load = async () => {
@@ -24,7 +25,7 @@ export default function ApiKeyManager() {
           try {
             loaded[p.id] = await decryptKey(sec, passphrase);
           } catch (e) {
-            loaded[p.id] = 'ERROR_DECRYPTING';
+            loaded[p.id] = '';
           }
         }
       }
@@ -34,24 +35,61 @@ export default function ApiKeyManager() {
   }, [passphrase, providers]);
 
   const handleTest = async (id: string, keyVal: string) => {
-    if (!keyVal || keyVal.length < 5) {
+    if (!keyVal || keyVal.trim().length === 0) {
       toastError('Please enter a valid API key first.');
-      setHealth(h => ({ ...h, [id]: 'error' }));
+      setHealth(h => ({ ...h, [id]: { status: 'error', message: 'Missing Key' } }));
       return;
     }
-
-    setHealth(h => ({ ...h, [id]: 'checking' }));
+    
+    setHealth(h => ({ ...h, [id]: { status: 'checking' } }));
     info(`Testing connection for ${id}...`);
-
+    
+    const startTime = Date.now();
     try {
-      // Test key format or shallow probe
-      await new Promise(r => setTimeout(r, 600));
-      setHealth(h => ({ ...h, [id]: 'ok' }));
-      success(`API key format for ${id} verified.`);
+      const abortController = new AbortController();
+      const signal = AbortSignal.timeout(5000);
+      let url = '';
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      const proxy = settings.proxyUrl || '';
+      
+      if (id === 'google') {
+        url = `https://generativelanguage.googleapis.com/v1beta/models?key=${keyVal}`;
+      } else if (id === 'anthropic') {
+        url = `${proxy}https://api.anthropic.com/v1/models`;
+        headers['x-api-key'] = keyVal;
+        headers['anthropic-version'] = '2023-06-01';
+      } else if (id === 'custom') {
+        const parts = keyVal.split('|');
+        const baseUrl = parts[0] || '';
+        const token = parts[1] || '';
+        url = `${proxy}${baseUrl}/models`;
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+      } else {
+        let base = 'https://api.openai.com/v1';
+        if (id === 'groq') base = 'https://api.groq.com/openai/v1';
+        if (id === 'together') base = 'https://api.together.xyz/v1';
+        if (id === 'deepseek') base = 'https://api.deepseek.com/v1';
+        if (id === 'mistral') base = 'https://api.mistral.ai/v1';
+        if (id === 'openrouter') base = 'https://openrouter.ai/api/v1';
+        
+        url = `${proxy}${base}/models`;
+        headers['Authorization'] = `Bearer ${keyVal}`;
+      }
+
+      const res = await fetch(url, { method: 'GET', headers, signal });
+      const latency = Date.now() - startTime;
+      
+      if (!res.ok) {
+        throw new Error(`${res.status} - ${res.statusText || 'Invalid Key'}`);
+      }
+      
+      setHealth(h => ({ ...h, [id]: { status: 'ok', latency } }));
+      success(`Connected to ${id} (${latency}ms)`);
     } catch (e: unknown) {
-      setHealth(h => ({ ...h, [id]: 'error' }));
-      const msg = e instanceof Error ? e.message : 'Connection test failed';
-      toastError(msg);
+      const latency = Date.now() - startTime;
+      const msg = e instanceof Error ? (e.name === 'TimeoutError' ? 'Timeout (5000ms)' : e.message) : 'Connection test failed';
+      setHealth(h => ({ ...h, [id]: { status: 'error', message: msg, latency } }));
+      toastError(`Test failed for ${id}: ${msg}`);
     }
   };
 
@@ -71,32 +109,47 @@ export default function ApiKeyManager() {
     success(`Securely saved and encrypted key for ${id}`);
   };
 
+  const renderBadge = (id: string) => {
+    const h = health[id];
+    if (!h) return null;
+    if (h.status === 'checking') {
+      return <span className="flex items-center gap-1 text-[11px] font-semibold text-blue-500 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20"><Activity size={12} className="animate-spin" /> Checking...</span>;
+    }
+    if (h.status === 'ok') {
+      return <span className="flex items-center gap-1 text-[11px] font-semibold text-green-500 bg-green-500/10 px-2 py-0.5 rounded border border-green-500/20"><CheckCircle2 size={12} /> {h.latency}ms - Connected</span>;
+    }
+    if (h.status === 'error') {
+      return <span className="flex items-center gap-1 text-[11px] font-semibold text-red-500 bg-red-500/10 px-2 py-0.5 rounded border border-red-500/20"><AlertCircle size={12} /> {h.message}</span>;
+    }
+    return null;
+  };
+
   return (
-    <div className="p-4 space-y-4">
-      <h2 className="text-xl font-bold border-b pb-2 border-[var(--border-subtle)]">API Keys</h2>
-      <div className="space-y-4">
-        {providers.map(p => {
-          if (p.id === 'custom') {
-            const val = keys[p.id] || '';
-            const parts = val.split('|');
-            const url = parts.length > 1 ? parts[0] : (val.includes('http') ? val : '');
-            const key = parts.length > 1 ? parts.slice(1).join('|') : (!val.includes('http') ? val : '');
-            return (
-              <div key={p.id} className="flex flex-col gap-1 pb-4 border-b border-[var(--border-subtle)]">
-                <label className="text-sm font-semibold">{p.name}</label>
-                <div className="flex gap-2 mb-2">
-                  <input
-                    type="text"
-                    className="flex-1 p-2 border rounded dark:bg-slate-800 dark:border-slate-600"
-                    value={url}
-                    onChange={e => setKeys(k => ({...k, [p.id]: `${e.target.value}|${key}`}))}
-                    placeholder="Base URL (e.g. https://api.openai.com/v1)"
-                  />
-                </div>
+    <div className="space-y-4">
+      {providers.filter(p => p.id !== 'ollama').map(p => {
+        if (p.id === 'custom') {
+          const val = keys[p.id] || '';
+          const parts = val.split('|');
+          const url = parts.length > 1 ? parts[0] : (val.includes('http') ? val : '');
+          const key = parts.length > 1 ? parts.slice(1).join('|') : (!val.includes('http') ? val : '');
+          return (
+            <div key={p.id} className="surface-panel p-4">
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-[13px] font-semibold">{p.name}</label>
+                {renderBadge(p.id)}
+              </div>
+              <div className="flex flex-col gap-2">
+                <input
+                  type="text"
+                  className="linear-input text-sm"
+                  value={url}
+                  onChange={e => setKeys(k => ({...k, [p.id]: `${e.target.value}|${key}`}))}
+                  placeholder="Base URL (e.g. https://api.example.com/v1)"
+                />
                 <div className="flex gap-2">
                   <input
                     type={show[p.id] ? "text" : "password"}
-                    className="flex-1 p-2 border rounded dark:bg-slate-800 dark:border-slate-600"
+                    className="linear-input text-sm flex-1"
                     value={key}
                     onChange={e => setKeys(k => ({...k, [p.id]: `${url}|${e.target.value}`}))}
                     placeholder="Enter API Key"
@@ -104,50 +157,44 @@ export default function ApiKeyManager() {
                   <button onClick={() => setShow(s => ({...s, [p.id]: !s[p.id]}))} className="p-2 border rounded dark:border-slate-600 luxury-button-ghost">
                     {show[p.id] ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
-                  <button onClick={() => handleTest(p.id, keys[p.id] || '')} title="Test Connection" className="p-2 border rounded dark:border-slate-600 luxury-button-ghost text-blue-500">
-                    {health[p.id] === 'checking' ? <Activity size={16} className="animate-spin" /> : health[p.id] === 'ok' ? <CheckCircle2 size={16} className="text-green-500" /> : health[p.id] === 'error' ? <AlertCircle size={16} className="text-red-500" /> : <Activity size={16} />}
+                  <button onClick={() => handleTest(p.id, keys[p.id] || '')} title="Test Connection" className="p-2 border rounded dark:border-slate-600 luxury-button-ghost">
+                    <Activity size={16} />
                   </button>
                   <button onClick={() => handleSave(p.id)} className="p-2 bg-[var(--accent-color)] text-white rounded hover:bg-[var(--accent-color)] shadow-sm">
                     <Save size={16} />
                   </button>
                 </div>
               </div>
-            );
-          }
-          return (
-          <div key={p.id} className="flex flex-col gap-1">
-            <label className="text-sm font-semibold">{p.name}</label>
+            </div>
+          );
+        }
+        return (
+          <div key={p.id} className="surface-panel p-4">
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-[13px] font-semibold">{p.name} API Key</label>
+              {renderBadge(p.id)}
+            </div>
             <div className="flex gap-2">
               <input
                 type={show[p.id] ? "text" : "password"}
-                className="flex-1 p-2 border rounded dark:bg-slate-800 dark:border-slate-600"
+                className="linear-input text-sm flex-1 font-mono"
                 value={keys[p.id] || ''}
                 onChange={e => setKeys(k => ({...k, [p.id]: e.target.value}))}
-                placeholder="Enter API Key"
+                placeholder="sk-..."
               />
-              <button onClick={() => setShow(s => ({...s, [p.id]: !s[p.id]}))} className="p-2 border rounded dark:border-slate-600 luxury-button-ghost">
+              <button onClick={() => setShow(s => ({...s, [p.id]: !s[p.id]}))} className="p-2 border rounded dark:border-[var(--border-subtle)] luxury-button-ghost">
                 {show[p.id] ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
-              <button onClick={() => handleTest(p.id, keys[p.id] || '')} title="Test Connection" className="p-2 border rounded dark:border-slate-600 luxury-button-ghost text-blue-500">
-                {health[p.id] === 'checking' ? <Activity size={16} className="animate-spin" /> : health[p.id] === 'ok' ? <CheckCircle2 size={16} className="text-green-500" /> : health[p.id] === 'error' ? <AlertCircle size={16} className="text-red-500" /> : <Activity size={16} />}
+              <button onClick={() => handleTest(p.id, keys[p.id] || '')} title="Test Connection" className="p-2 border rounded dark:border-[var(--border-subtle)] luxury-button-ghost">
+                <Activity size={16} />
               </button>
               <button onClick={() => handleSave(p.id)} className="p-2 bg-[var(--accent-color)] text-white rounded hover:bg-[var(--accent-color)] shadow-sm">
                 <Save size={16} />
               </button>
             </div>
           </div>
-        )})}
-      </div>
-      <div className="pt-4 border-t border-[var(--border-subtle)]">
-         <label className="text-sm font-semibold">Global Proxy URL (Optional, for CORS)</label>
-         <input
-            type="text"
-            className="w-full p-2 mt-1 border rounded dark:bg-slate-800 dark:border-slate-600"
-            value={settings.proxyUrl || ''}
-            onChange={e => updateSettings({ proxyUrl: e.target.value })}
-            placeholder="https://cors-anywhere.herokuapp.com/"
-          />
-      </div>
+        )
+      })}
     </div>
   );
 }

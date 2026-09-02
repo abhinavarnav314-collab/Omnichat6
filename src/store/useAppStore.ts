@@ -76,12 +76,12 @@ export const useAppStore = create<AppState>((set, get) => {
 
   return {
     activeProfile: 'default',
-    profiles: [{ id: 'default', name: 'Default Profile' }],
+    profiles: [{ id: 'default', name: 'Default Profile', tokenBudget: 100000, createdAt: Date.now() }],
     tokenBudget: 100000,
     setActiveProfile: (id) => set({ activeProfile: id }),
     addProfile: (name) =>
       set((state) => ({
-        profiles: [...state.profiles, { id: Date.now().toString(), name }],
+        profiles: [...state.profiles, { id: Date.now().toString(), name, tokenBudget: 100000, createdAt: Date.now() }],
       })),
 
     settings: initialSettings,
@@ -99,14 +99,14 @@ export const useAppStore = create<AppState>((set, get) => {
         setTimeout(() => get().passphraseUnlocked && resetAutoLock(), 0);
         return {
           activeProfile: 'default',
-          profiles: [{ id: 'default', name: 'Default Profile' }],
+          profiles: [{ id: 'default', name: 'Default Profile', tokenBudget: 100000, createdAt: Date.now() }],
           tokenBudget: 100000,
           setActiveProfile: (id) => set({ activeProfile: id }),
           addProfile: (name) =>
             set((state) => ({
               profiles: [
                 ...state.profiles,
-                { id: Date.now().toString(), name },
+                { id: Date.now().toString(), name, tokenBudget: 100000, createdAt: Date.now() },
               ],
             })),
           settings: updated,

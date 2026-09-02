@@ -13,18 +13,20 @@ import {
   CustomApp,
   PrivacyNote,
   TaskResult,
+  UserProfile,
+  ABTest,
 } from '../types';
 
 interface OmniChatDB extends DBSchema {
   conversations: {
     key: string;
     value: Conversation;
-    indexes: { updatedAt: number };
+    indexes: { updatedAt: number; profileId: string; };
   };
   prompts: {
     key: string;
     value: Prompt;
-    indexes: { updatedAt: number; folderId: string };
+    indexes: { updatedAt: number; folderId: string; profileId: string; };
   };
   promptFolders: {
     key: string;
@@ -41,7 +43,12 @@ interface OmniChatDB extends DBSchema {
   };
   abTests: {
     key: string;
-    value: any;
+    value: ABTest;
+    indexes: { timestamp: number; profileId: string; };
+  };
+  profiles: {
+    key: string;
+    value: UserProfile;
   };
   secrets: {
     key: string;
@@ -83,7 +90,7 @@ let dbPromise: Promise<IDBPDatabase<OmniChatDB>> | null = null;
 
 export async function getDB() {
   if (!dbPromise) {
-    dbPromise = openDB<OmniChatDB>('omniChat-db', 5, {
+    dbPromise = openDB<OmniChatDB>('omniChat-db', 6, {
       upgrade(db, oldVersion, newVersion, transaction) {
         if (oldVersion < 1) {
           const cStore = db.createObjectStore('conversations', {
@@ -145,6 +152,32 @@ export async function getDB() {
             db.createObjectStore('privacyVault', { keyPath: 'id' });
           }
         }
+        if (oldVersion < 6) {
+          if (!db.objectStoreNames.contains('profiles')) {
+            db.createObjectStore('profiles', { keyPath: 'id' });
+          }
+          if (!db.objectStoreNames.contains('abTests')) {
+            const abStore = db.createObjectStore('abTests', { keyPath: 'id' });
+            abStore.createIndex('timestamp', 'timestamp');
+            abStore.createIndex('profileId', 'profileId');
+          } else {
+            const abStore = transaction.objectStore('abTests');
+            if (!abStore.indexNames.contains('timestamp')) {
+              abStore.createIndex('timestamp', 'timestamp');
+            }
+            if (!abStore.indexNames.contains('profileId')) {
+              abStore.createIndex('profileId', 'profileId');
+            }
+          }
+          const cStore = transaction.objectStore('conversations');
+          if (!cStore.indexNames.contains('profileId')) {
+            cStore.createIndex('profileId', 'profileId');
+          }
+          const pStore = transaction.objectStore('prompts');
+          if (!pStore.indexNames.contains('profileId')) {
+            pStore.createIndex('profileId', 'profileId');
+          }
+        }
       },
     });
   }
@@ -152,6 +185,11 @@ export async function getDB() {
 }
 
 // Conversation Ops
+export async function getConversationsByProfile(profileId: string): Promise<Conversation[]> {
+  const db = await getDB();
+  return db.getAllFromIndex('conversations', 'profileId', profileId);
+}
+
 export async function getConversations(): Promise<Conversation[]> {
   const db = await getDB();
   return db.getAllFromIndex('conversations', 'updatedAt');
@@ -166,6 +204,11 @@ export async function deleteConversation(id: string) {
 }
 
 // Prompts Ops
+export async function getPromptsByProfile(profileId: string): Promise<Prompt[]> {
+  const db = await getDB();
+  return db.getAllFromIndex('prompts', 'profileId', profileId);
+}
+
 export async function getPrompts(): Promise<Prompt[]> {
   const db = await getDB();
   return db.getAllFromIndex('prompts', 'updatedAt');
@@ -283,13 +326,33 @@ export async function clearAllData() {
   await tx.done;
 }
 
-export async function saveABTest(test: any) {
+export async function saveABTest(test: ABTest): Promise<void> {
   const db = await getDB();
   await db.put('abTests', test);
 }
-export async function getABTests(): Promise<any[]> {
+export async function getABTests(profileId?: string): Promise<ABTest[]> {
   const db = await getDB();
+  if (profileId) {
+    return db.getAllFromIndex('abTests', 'profileId', profileId);
+  }
   return db.getAll('abTests');
+}
+export async function deleteABTest(id: string): Promise<void> {
+  const db = await getDB();
+  await db.delete('abTests', id);
+}
+
+export async function getProfiles(): Promise<UserProfile[]> {
+  const db = await getDB();
+  return db.getAll('profiles');
+}
+export async function saveProfile(profile: UserProfile): Promise<void> {
+  const db = await getDB();
+  await db.put('profiles', profile);
+}
+export async function deleteProfile(id: string): Promise<void> {
+  const db = await getDB();
+  await db.delete('profiles', id);
 }
 
 export async function exportAllData(): Promise<Record<string, any[]>> {

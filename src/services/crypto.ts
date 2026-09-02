@@ -47,8 +47,8 @@ async function getDerivedKey(passphrase: string, salt: Uint8Array): Promise<Cryp
 }
 
 export async function encryptKey(plaintext: string, passphrase: string): Promise<EncryptedKey> {
-  if (plaintext && typeof plaintext === 'string' && plaintext.trim().length > 0 && !passphrase) {
-    throw new Error('Runtime Security Exception: Attempted to encrypt key without a passphrase');
+  if (plaintext && plaintext.trim().length > 0 && (!passphrase || passphrase.trim().length === 0)) {
+    throw new Error('Runtime Security Exception: Attempted to encrypt credentials without an active passphrase.');
   }
   
   const salt = crypto.getRandomValues(new Uint8Array(16));

@@ -15,6 +15,7 @@ import { deepseekAdapter } from './deepseek';
 import { moonshotAdapter } from './moonshot';
 import { yiAdapter } from './yi';
 import { customAdapter } from './openaiCompatible';
+import { ollamaAdapter } from './ollama';
 
 const allProviders = [
   anthropicAdapter,
@@ -27,6 +28,7 @@ const allProviders = [
   groqAdapter,
   mistralAdapter,
   moonshotAdapter,
+  ollamaAdapter,
   openaiAdapter,
   perplexityAdapter,
   qwenAdapter,

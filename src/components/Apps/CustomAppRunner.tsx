@@ -61,6 +61,16 @@ export default function CustomAppRunner({ app, onBack }: { app: any, onBack: () 
         </div>
         <div className="flex gap-2">
           <button 
+            onClick={() => {
+              const dataStr = JSON.stringify(app, null, 2);
+              navigator.clipboard.writeText(dataStr);
+              alert('App JSON copied to clipboard. You can share this string for others to import.');
+            }}
+            className="linear-button-secondary text-[13px]"
+          >
+            <Copy size={14} /> Export App
+          </button>
+          <button 
             onClick={handleSendToChat}
             className="linear-button-primary text-[13px]"
           >
@@ -120,7 +130,7 @@ export default function CustomAppRunner({ app, onBack }: { app: any, onBack: () 
                   onClick={handlePrint}
                   className="linear-button-secondary text-[12px] py-1 px-2.5"
                 >
-                  <Printer size={12} /> Print / PDF (Pro)
+                  <Printer size={12} /> Print / PDF
                 </button>
                 <button 
                   onClick={handleCopyOutput}

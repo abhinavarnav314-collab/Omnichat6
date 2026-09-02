@@ -13,7 +13,7 @@ interface PromptState {
   versions: Record<string, PromptVersion[]>;
   chains: PromptChain[];
   loadPrompts: () => Promise<void>;
-  addPrompt: (prompt: Omit<Prompt, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  addPrompt: (prompt: Omit<Prompt, 'id' | 'createdAt' | 'updatedAt' | 'profileId'> & { profileId?: string }) => Promise<void>;
   updatePrompt: (id: string, updates: Partial<Prompt>) => Promise<void>;
   deletePrompt: (id: string) => Promise<void>;
   addFolder: (name: string, parentId?: string) => Promise<void>;
@@ -38,8 +38,11 @@ export const usePromptStore = create<PromptState>((set, get) => ({
     set({ prompts, folders, chains });
   },
   addPrompt: async (promptData) => {
+    const { useAppStore } = await import('./useAppStore');
+    const profileId = promptData.profileId || useAppStore.getState().activeProfile || 'default';
     const newPrompt: Prompt = {
       ...promptData,
+      profileId,
       id: crypto.randomUUID(),
       createdAt: Date.now(),
       updatedAt: Date.now()

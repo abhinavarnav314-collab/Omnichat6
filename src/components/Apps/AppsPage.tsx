@@ -63,12 +63,41 @@ export default function AppsPage() {
             </h1>
             <p className="text-[15px] text-[var(--text-secondary)]">Production-grade AI workflows for specialized tasks.</p>
           </div>
-          <button 
-            onClick={() => setIsBuilding(true)}
-            className="flex items-center gap-2 bg-[var(--accent-color)] hover:bg-[var(--accent-hover)] text-white px-5 py-2.5 rounded-lg font-medium transition-colors shadow-sm"
-          >
-            <Plus size={16} /> Create Custom App
-          </button>
+          <div className="flex gap-3">
+            <button 
+              onClick={() => {
+                const data = window.prompt('Paste the Custom App JSON string here:');
+                if (data) {
+                  try {
+                    const parsed = JSON.parse(data);
+                    if (parsed && parsed.name && parsed.promptTemplate) {
+                       useMetaStore.getState().addCustomApp({
+                         name: parsed.name,
+                         description: parsed.description || 'Imported App',
+                         promptTemplate: parsed.promptTemplate,
+                         fields: parsed.fields || [],
+                         icon: parsed.icon || 'Cpu'
+                       });
+                       alert('App imported successfully!');
+                    } else {
+                       alert('Invalid App format');
+                    }
+                  } catch (e) {
+                    alert('Invalid JSON');
+                  }
+                }
+              }}
+              className="flex items-center gap-2 surface-panel hover:bg-[var(--bg-surface-hover)] px-5 py-2.5 rounded-lg font-medium transition-colors shadow-sm"
+            >
+              Import App
+            </button>
+            <button 
+              onClick={() => setIsBuilding(true)}
+              className="flex items-center gap-2 bg-[var(--accent-color)] hover:bg-[var(--accent-hover)] text-white px-5 py-2.5 rounded-lg font-medium transition-colors shadow-sm"
+            >
+              <Plus size={16} /> Create Custom App
+            </button>
+          </div>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">

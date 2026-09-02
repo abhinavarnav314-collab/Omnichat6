@@ -5,6 +5,7 @@ export interface Message {
   role: MessageRole;
   content: string;
   timestamp: number;
+  rating?: number;
   parentId?: string | null;
   modelId?: string;
   providerId?: string;
@@ -18,6 +19,7 @@ export interface Message {
 
 export interface Conversation {
   id: string;
+  profileId: string;
   title: string;
   messages: Message[];
   updatedAt: number;
@@ -50,6 +52,7 @@ export interface PromptFolder {
 
 export interface Prompt {
   id: string;
+  profileId: string;
   title: string;
   description: string;
   text: string;
@@ -170,13 +173,16 @@ export interface TaskResult {
 export interface UserProfile {
   id: string;
   name: string;
+  tokenBudget: number;
+  createdAt: number;
 }
 
 export interface ABTest {
   id: string;
+  profileId: string;
   prompt: string;
   modelA: string;
   modelB: string;
-  winner: 'A' | 'B' | 'none';
+  winner: 'A' | 'B' | 'tie' | 'none';
   timestamp: number;
 }

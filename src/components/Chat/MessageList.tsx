@@ -4,9 +4,12 @@ import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
-import { User, Bot, RefreshCw, Check, Copy } from 'lucide-react';
+import { User, Bot, RefreshCw, Check, Copy, Star } from 'lucide-react';
 import VirtualMessageList from './VirtualMessageList';
 import BranchNavigator from './BranchNavigator';
+import { useChatStore } from '../../store/useChatStore';
+import { saveABTest } from '../../services/db';
+import { useAppStore } from '../../store/useAppStore';
 import { preprocessMath } from '../../utils/mathFormatter';
 
 const SyntaxHighlighter = lazy(() => import('react-syntax-highlighter').then(module => ({ default: module.Prism })));
@@ -72,81 +75,157 @@ interface MessageListProps {
   onResend: (content: string, parentId: string | null) => void;
 }
 
+
+const ComparisonTurn = ({ turn, onResend, renderContent, renderMessageStats }: any) => {
+    const { activeProfile } = useAppStore();
+    const [randomizedIndex] = React.useState(() => Math.random() > 0.5 ? 0 : 1);
+    const [vote, setVote] = React.useState<string | null>(null);
+
+    const isComplete = turn.assistants.length === 2 && turn.assistants.every((a: any) => !a.isError && a.content.length > 0);
+    const assistants = [...turn.assistants];
+    
+    // Fill if not enough assistants yet for rendering layout cleanly
+    while (assistants.length < 2) {
+        assistants.push({ id: 'dummy-' + assistants.length, isLoading: true });
+    }
+
+    const cand1 = assistants[randomizedIndex];
+    const cand2 = assistants[1 - randomizedIndex];
+
+    const handleVote = async (choice: 'A' | 'B' | 'tie') => {
+        if (vote) return;
+        setVote(choice);
+        if (!turn.user.content || !cand1.modelId || !cand2.modelId) return;
+
+        let winner = 'none';
+        if (choice === 'A') winner = cand1.modelId;
+        if (choice === 'B') winner = cand2.modelId;
+        if (choice === 'tie') winner = 'tie';
+
+        await saveABTest({
+            id: crypto.randomUUID(),
+            profileId: activeProfile || 'default',
+            prompt: turn.user.content,
+            modelA: cand1.modelId,
+            modelB: cand2.modelId,
+            winner: winner as any,
+            timestamp: Date.now()
+        });
+    };
+
+    return (
+        <div className="space-y-4">
+            <div className="flex flex-col items-end">
+                <div className="message-bubble-user p-4 max-w-[80%]">
+                    <div className="flex items-center gap-2 mb-2 opacity-80 text-[12px] font-medium">
+                        <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+                            <User size={12} />
+                        </div>
+                        <span>You</span>
+                        <button aria-label="Edit and Resend" onClick={() => onResend(turn.user.content, turn.user.parentId || null)} className="ml-auto hover:bg-white/20 p-1 rounded transition-colors" title="Edit and Resend">
+                            <RefreshCw size={12} />
+                        </button>
+                    </div>
+                    <div className="prose prose-sm dark:prose-invert prose-p:leading-relaxed prose-pre:p-0 text-white">
+                        {renderContent(turn.user.content)}
+                    </div>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {[cand1, cand2].map((ast, j) => {
+                    const isLeft = j === 0;
+                    return (
+                        <div key={ast.id} className={`surface-panel p-4 flex flex-col h-full ${vote ? (vote === (isLeft ? 'A' : 'B') ? 'ring-2 ring-[var(--accent-color)]' : '') : ''}`}>
+                            <div className="flex items-center gap-2 mb-3 text-[12px] font-semibold text-[var(--text-primary)] border-b border-[var(--border-subtle)] pb-2">
+                                <div className="w-5 h-5 rounded-full bg-[var(--bg-surface-hover)] border border-[var(--border-subtle)] flex items-center justify-center shrink-0">
+                                    <Bot size={12} className="text-[var(--text-secondary)]" />
+                                </div>
+                                <span className="truncate">
+                                    {vote || !isComplete ? (ast.modelId || 'Assistant') : `Candidate ${j + 1}`}
+                                </span>
+                                {ast.isLoading && <span className="text-[var(--text-muted)] text-[10px] uppercase tracking-wider ml-auto">Generating...</span>}
+                                {ast.isError && <span className="text-[var(--error-color)] text-[10px] uppercase tracking-wider ml-auto border border-[var(--error-color)]/30 bg-[var(--error-color)]/10 rounded px-1.5 py-0.5">Error</span>}
+                            </div>
+                            <div className="prose prose-sm dark:prose-invert prose-p:leading-relaxed prose-pre:p-0 overflow-x-auto max-w-full flex-1">
+                                {ast.content ? renderContent(ast.content) : (ast.isLoading ? <div className="animate-pulse flex space-x-2 items-center"><div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div><div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div><div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div></div> : null)}
+                            </div>
+                            {ast.content && renderMessageStats(ast)}
+                        </div>
+                    );
+                })}
+            </div>
+            
+            {isComplete && !vote && (
+                <div className="flex items-center justify-center gap-4 mt-4 py-4 border-t border-[var(--border-subtle)]">
+                    <button onClick={() => handleVote('A')} className="px-4 py-2 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded shadow-sm hover:bg-[var(--bg-surface-hover)] hover:text-[var(--accent-color)] transition-colors text-sm font-semibold">
+                        Candidate 1 is Better
+                    </button>
+                    <button onClick={() => handleVote('tie')} className="px-4 py-2 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded shadow-sm hover:bg-[var(--bg-surface-hover)] transition-colors text-sm font-semibold">
+                        Tie / Both Equal
+                    </button>
+                    <button onClick={() => handleVote('B')} className="px-4 py-2 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded shadow-sm hover:bg-[var(--bg-surface-hover)] hover:text-[var(--accent-color)] transition-colors text-sm font-semibold">
+                        Candidate 2 is Better
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+};
+
 export default function MessageList({ conversation, isComparison, onResend }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
+  const { updateMessage } = useChatStore();
+  
+  const handleRate = (messageId: string, rating: number) => {
+      updateMessage(conversation.id, messageId, { rating });
+  };
   
   const activeMessages = useMemo(() => {
     if (!conversation.messages || conversation.messages.length === 0) return [];
-
-    if (isComparison) {
-      return [...conversation.messages].sort((a, b) => a.timestamp - b.timestamp);
-    }
-
-    const msgMap = new Map(conversation.messages.map(m => [m.id, m]));
+    
+    const messages: Message[] = [];
     let currentId: string | null | undefined = conversation.currentLeafId;
-
-    if (!currentId || !msgMap.has(currentId)) {
-      currentId = conversation.messages[conversation.messages.length - 1]?.id;
+    const msgMap = new Map(conversation.messages.map(m => [m.id, m]));
+    
+    while (currentId) {
+        const msg = msgMap.get(currentId);
+        if (!msg) break;
+        messages.unshift(msg);
+        currentId = msg.parentId;
     }
+    return messages;
+  }, [conversation]);
 
-    const history: Message[] = [];
-    const visited = new Set<string>();
-
-    while (currentId && !visited.has(currentId)) {
-      visited.add(currentId);
-      const msg = msgMap.get(currentId);
-      if (!msg) break;
-      history.unshift(msg);
-      currentId = msg.parentId;
-    }
-
-    if (history.length === 0 && conversation.messages.length > 0) {
-      return [...conversation.messages].sort((a, b) => a.timestamp - b.timestamp);
-    }
-
-    return history;
-  }, [conversation.messages, conversation.currentLeafId, isComparison]);
-
-  useEffect(() => {
-    if (bottomRef.current) {
-      bottomRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [activeMessages.length, conversation.messages.length]);
-
-    const renderContent = (content: string) => {
-      const processed = preprocessMath(content || '');
-      return (
-        <Markdown
-          remarkPlugins={[remarkGfm, remarkMath]}
-          rehypePlugins={[[rehypeKatex, { strict: false, throwOnError: false }]]}
-          components={{
-            a: ({ node, href, children, ...props }) => {
-                let isSafe = false;
-                try {
-                    const url = new URL(href || '', window.location.origin);
-                    isSafe = ['http:', 'https:', 'mailto:'].includes(url.protocol);
-                } catch (e) {
-                    isSafe = false;
-                }
+  
+  const renderContent = (content: string) => {
+    const processed = preprocessMath(content);
+    return (
+      <Markdown
+        remarkPlugins={[remarkGfm, remarkMath]}
+        rehypePlugins={[rehypeKatex]}
+        components={{
+            a: ({ href, children, ...props }: any) => {
+                const isSafe = href?.startsWith('http') || href?.startsWith('https');
                 if (!isSafe) {
                     return <span>{children}</span>;
                 }
                 return <a href={href} target="_blank" rel="noopener noreferrer" className="text-[var(--accent-color)] hover:underline" {...props}>{children}</a>;
             },
             code: CodeBlock,
-            table: ({ children, ...props }) => (
+            table: ({ children, ...props }: any) => (
               <div className="overflow-x-auto my-3 border border-[var(--border-subtle)] rounded-lg">
                 <table className="w-full text-left text-sm border-collapse" {...props}>
                   {children}
                 </table>
               </div>
             ),
-            th: ({ children, ...props }) => (
+            th: ({ children, ...props }: any) => (
               <th className="bg-[var(--bg-surface-hover)] px-3 py-2 font-semibold text-[var(--text-primary)] border-b border-[var(--border-subtle)]" {...props}>
                 {children}
               </th>
             ),
-            td: ({ children, ...props }) => (
+            td: ({ children, ...props }: any) => (
               <td className="px-3 py-2 border-b border-[var(--border-subtle)] text-[var(--text-secondary)]" {...props}>
                 {children}
               </td>
@@ -159,17 +238,31 @@ export default function MessageList({ conversation, isComparison, onResend }: Me
   };
 
   const renderMessageStats = (msg: Message) => {
-    if (!msg.tokens) return null;
     return (
-      <div className="flex gap-4 mt-3 pt-2 border-t border-[var(--border-subtle)] text-[11px] text-[var(--text-muted)] font-mono items-center">
-        <span title="Tokens (Prompt / Completion)">
-          T: {msg.tokens.prompt} / {msg.tokens.completion}
-        </span>
-        <span title="Estimated Cost">
-          ${msg.cost?.toFixed(5)}
-        </span>
+      <div className="flex gap-4 mt-3 pt-2 border-t border-[var(--border-subtle)] text-[11px] text-[var(--text-muted)] font-mono items-center flex-wrap">
+        {msg.tokens && (
+          <span title="Tokens (Prompt / Completion)">
+            T: {msg.tokens.prompt} / {msg.tokens.completion}
+          </span>
+        )}
+        {msg.cost !== undefined && (
+          <span title="Estimated Cost">
+            ${msg.cost.toFixed(5)}
+          </span>
+        )}
         {msg.isUsageEstimated && (
-           <span title="Tokens and cost are estimated locally" className="ml-auto text-[9px] bg-[var(--bg-surface-hover)] border border-[var(--border-subtle)] px-1.5 py-0.5 rounded uppercase tracking-wider">Est</span>
+           <span title="Tokens and cost are estimated locally" className="mr-2 text-[9px] bg-[var(--bg-surface-hover)] border border-[var(--border-subtle)] px-1.5 py-0.5 rounded uppercase tracking-wider">Est</span>
+        )}
+        {msg.role === 'assistant' && (
+           <div className="flex gap-1 items-center ml-auto">
+               <span className="text-[10px] text-[var(--text-muted)] mr-1 uppercase tracking-wider">Rate</span>
+               {[1,2,3,4,5].map(star => (
+                   <button key={star} onClick={() => handleRate(msg.id, star)} className="hover:scale-110 transition-transform">
+                       <Star size={12} className={msg.rating && msg.rating >= star ? "fill-[var(--accent-color)] text-[var(--accent-color)]" : "text-[var(--border-subtle)] hover:text-[var(--accent-color)]"} />
+                   </button>
+               ))}
+               {msg.rating && <span className="text-[9px] font-semibold bg-[var(--accent-color)]/10 text-[var(--accent-color)] border border-[var(--accent-color)]/20 px-1.5 py-0.5 rounded ml-1">{msg.rating} / 5</span>}
+           </div>
         )}
       </div>
     );
@@ -192,44 +285,7 @@ export default function MessageList({ conversation, isComparison, onResend }: Me
       return (
           <div className="space-y-6">
               {turns.map((turn, i) => (
-                  <div key={i} className="space-y-4">
-                      {/* User message */}
-                      <div className="flex flex-col items-end">
-                          <div className="message-bubble-user p-4 max-w-[80%]">
-                              <div className="flex items-center gap-2 mb-2 opacity-80 text-[12px] font-medium">
-                                  <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center shrink-0">
-                                      <User size={12} />
-                                  </div>
-                                  <span>You</span>
-                                  <button aria-label="Edit and Resend" onClick={() => onResend(turn.user.content, turn.user.parentId || null)} className="ml-auto hover:bg-white/20 p-1 rounded transition-colors" title="Edit and Resend">
-                                      <RefreshCw size={12} />
-                                  </button>
-                              </div>
-                              <div className="prose prose-sm dark:prose-invert prose-p:leading-relaxed prose-pre:p-0 text-white">
-                                  {renderContent(turn.user.content)}
-                              </div>
-                          </div>
-                      </div>
-
-                      {/* Assistant messages side-by-side */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {turn.assistants.map((ast, j) => (
-                              <div key={ast.id} className="surface-panel p-4 flex flex-col h-full">
-                                  <div className="flex items-center gap-2 mb-3 text-[12px] font-semibold text-[var(--text-primary)] border-b border-[var(--border-subtle)] pb-2">
-                                      <div className="w-5 h-5 rounded-full bg-[var(--bg-surface-hover)] border border-[var(--border-subtle)] flex items-center justify-center shrink-0">
-                                          <Bot size={12} className="text-[var(--text-secondary)]" />
-                                      </div>
-                                      <span className="truncate">{ast.modelId || 'Assistant'}</span>
-                                      {ast.isError && <span className="text-[var(--error-color)] text-[10px] uppercase tracking-wider ml-auto border border-[var(--error-color)]/30 bg-[var(--error-color)]/10 rounded px-1.5 py-0.5">Error</span>}
-                                  </div>
-                                  <div className="prose prose-sm dark:prose-invert prose-p:leading-relaxed prose-pre:p-0 overflow-x-auto max-w-full flex-1">
-                                      {renderContent(ast.content)}
-                                  </div>
-                                  {renderMessageStats(ast)}
-                              </div>
-                          ))}
-                      </div>
-                  </div>
+                  <ComparisonTurn key={i} turn={turn} onResend={onResend} renderContent={renderContent} renderMessageStats={renderMessageStats} />
               ))}
               <div ref={bottomRef} />
           </div>

@@ -142,12 +142,19 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [togglePromptVault, toggleSidebar, createConversation]);
 
-  const totalCost = useMemo(() => {
+  const { profiles, activeProfile, tokenBudget } = useAppStore();
+  const profile = profiles.find(p => p.id === activeProfile);
+  const currentTokenBudget = profile?.tokenBudget || tokenBudget || 100000;
+
+  const totalTokens = useMemo(() => {
     return conversations.reduce(
-      (acc, c) => acc + c.messages.reduce((mc, m) => mc + (m.cost || 0), 0),
+      (acc, c) => acc + c.messages.reduce((mc, m) => mc + (m.tokens?.prompt || 0) + (m.tokens?.completion || 0), 0),
       0
     );
   }, [conversations]);
+
+  const tokenPercentage = Math.min(100, (totalTokens / currentTokenBudget) * 100);
+  const tokenColor = tokenPercentage < 70 ? 'bg-green-500' : tokenPercentage < 90 ? 'bg-amber-500' : 'bg-red-500';
 
   return (
     <div className="flex h-screen w-full bg-[var(--bg-base)] text-[var(--text-primary)] overflow-hidden font-sans">
@@ -236,9 +243,18 @@ function App() {
               <DownloadCloud size={14} /> Install App
             </button>
           )}
-          <div className="px-3 py-2 flex justify-between items-center text-[12px] text-[var(--text-muted)]">
-            <span>Spend</span>
-            <span className="font-mono">${totalCost.toFixed(3)}</span>
+
+          <div className="px-3 py-3 flex flex-col gap-1">
+            <div className="flex justify-between items-center text-[11px] text-[var(--text-secondary)] font-medium">
+              <span>Token Budget</span>
+              <span className="font-mono">{totalTokens.toLocaleString()} / {currentTokenBudget.toLocaleString()}</span>
+            </div>
+            <div className="w-full h-1.5 bg-[var(--bg-surface-hover)] rounded-full overflow-hidden">
+              <div 
+                className={`h-full ${tokenColor} transition-all duration-300`} 
+                style={{ width: `${tokenPercentage}%` }}
+              />
+            </div>
           </div>
           <button
             onClick={() => setShowPrivacyVault(true)}

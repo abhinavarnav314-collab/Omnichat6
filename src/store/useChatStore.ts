@@ -35,8 +35,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
   createConversation: async (isComparison = false) => {
+    // Import dynamically to avoid circular dependencies if any
+    const { useAppStore } = await import('./useAppStore');
+    const profileId = useAppStore.getState().activeProfile || 'default';
+    
     const newConvo: Conversation = {
       id: crypto.randomUUID(),
+      profileId,
       title: isComparison ? 'Model Comparison' : 'New Conversation',
       messages: [],
       createdAt: Date.now(),
